@@ -21,7 +21,7 @@ pub fn fix_write_dt(dt: &DateTime<Local>, db_offset: &FixedOffset) -> NaiveDateT
 // 解析字符串得到时区 例如："+08:00"
 pub fn parse_timezone(tz: &str) -> std::result::Result<FixedOffset, String> {
     let list: Vec<char> = tz.chars().collect();
-    println!("list: {:?}", list);
+    // println!("list: {:?}", list);
     if list.len() < 6 {
         return Err(format!("{} is invalid timezone", tz));
     }
