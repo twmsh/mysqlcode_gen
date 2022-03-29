@@ -1,0 +1,43 @@
+mysql:
+    datetime，存在数据库中，不会转成UTC，只是存储字面值。
+    存入字符串时间，存储的是字符串字面值
+    存入now()函数时候，存储的字面值是系统时间转换成当前time_zone(connection使用的time_zone时区)的值。
+    读取时候，用不同的time_zone，进行读取，是同一个字面值，不会自动转化。
+
+    使用now()/sysdate()等函数，获得的时间字面值，是系统时间转换成当前connect的time_zone的时间。
+
+    timestamp. 会转成UTC，进行存储
+
+sqlx:
+    mysql驱动，在处理DateTime<Local>属性字段时候，读取datetime值时候，sqlx会认为datime字面值使用是UTC时区的，
+    然后将这个UTC的字面值，转换成当前主机的local时间.
+    写入datetime值的时候，sqlx会将chrono::DateTime<Local>转换成UTC的字面值，然后存入到mysql库中
+
+    在处理NaviTime时候，则不会进行任何转换
+
+目标：
+    存入到mysql中的字面值，是对应system_time_zone的。
+    这样在mysql shell中手动插入的数据，和通过app存入的数据，时间是一个时区的。
+
+
+所以：
+    在APP中定义一个FixedOffset用来对应 mysql的system_time_zone
+
+    举例：mysql的system_time_zone = "+08:00"
+    rust程序所在的主机的时区是 "+04:00"
+    rust程序当前时间：DateTime<Local> = 10:00:00 +04:00
+
+    1) mysql连接后，将connect的time_zone设置成 mysql的system_time_zone.
+
+    2) 通过sqlx写入时间时，传入NaiveDateTime对象给sqlx
+        将 10:00:00 +04:00（APP时区） 转成 14:00:00 +08:00(mysql系统时区)，
+        再转成 14:00:00的NaiveDateTime对象
+        传入到sqlx代码中
+
+    3）通过sqlx读取时候，sqlx会将14:00:00当成 14:00:00 +00:00，
+    然后转成 18:00::00 +04:00后，传给应用层。这个时间是不正确的。
+    解决办法：将 18:00:00 +04:00 转成 14:00:00 +00:00，
+    然后转成 14:00:00 +08:00，然后转成 10:00:00 +04:00
+
+
+

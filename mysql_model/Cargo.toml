@@ -8,6 +8,9 @@ edition = "2021"
 [dependencies]
 mysql_codegen = { path = "../mysql_codegen" }
 
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
 tokio = { version = "1.15", features = ["full"] }
 
 mysql = "22"
