@@ -1,14 +1,15 @@
 use chrono::prelude::*;
 
-
 // 从驱动层(sqlx)读取的时间，被认为是UtC时间，实际不是
 pub fn fix_read_dt(dt: &mut DateTime<Local>, db_offset: &FixedOffset) {
     let origin_dt = dt.with_timezone(&Utc);
+
     let db_local = db_offset
         .from_local_datetime(&origin_dt.naive_local())
         .unwrap();
 
     let dst_dt = db_local.with_timezone(&Local);
+
     *dt = dst_dt;
 }
 
@@ -37,7 +38,7 @@ pub fn parse_timezone(tz: &str) -> std::result::Result<FixedOffset, String> {
     let ts = match NaiveTime::parse_from_str(&tz[1..], "%H:%M") {
         Ok(v) => v,
         Err(e) => {
-            return Err(format!("{} is invalid timezone, {:?}", tz,e));
+            return Err(format!("{} is invalid timezone, {:?}", tz, e));
         }
     };
 
