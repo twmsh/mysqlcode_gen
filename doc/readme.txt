@@ -41,6 +41,10 @@ values("bbb","bbb","bbb1","bbb",now(),now());
 insert into be_user(name,login_name,password,salt,gmt_create,gmt_modified)
 values("ccc","ccc","ccc1","ccc2",now(),now());
 
+insert into be_user(name,login_name,password,salt,gmt_create,gmt_modified,last_login)
+values("kkk","kkk","kkk","kkk",now(),now(),now());
+
+
 
 
 # 显示 mysql time_zone

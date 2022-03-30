@@ -1,4 +1,9 @@
+use std::error::Error as StdError;
+use std::fmt::{Display, Formatter};
+
 use chrono::prelude::*;
+use chrono::LocalResult;
+use sqlx::error::DatabaseError;
 
 // 从驱动层(sqlx)读取的时间，被认为是UtC时间，实际不是
 pub fn fix_read_dt(dt: &mut DateTime<Local>, db_offset: &FixedOffset) {
@@ -47,5 +52,56 @@ pub fn parse_timezone(tz: &str) -> std::result::Result<FixedOffset, String> {
         Ok(FixedOffset::east(seconds as i32))
     } else {
         Ok(FixedOffset::west(seconds as i32))
+    }
+}
+
+//------------------------------------------------------
+pub fn parse_local_time_str(ts: &str, fmt: &str) -> Result<DateTime<Local>, MySqxErr> {
+    let nt = match NaiveDateTime::parse_from_str(ts, fmt) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(MySqxErr(e.to_string()));
+        }
+    };
+
+    let dt = match (Local).from_local_datetime(&nt) {
+        LocalResult::None => {
+            return Err(MySqxErr(format!("invalid {}", ts)));
+        }
+        LocalResult::Single(v) => v,
+        LocalResult::Ambiguous(_, _) => {
+            return Err(MySqxErr(format!("invalid {}", ts)));
+        }
+    };
+
+    Ok(dt)
+}
+
+#[derive(Debug)]
+pub struct MySqxErr(String);
+
+impl Display for MySqxErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl StdError for MySqxErr {}
+
+impl DatabaseError for MySqxErr {
+    fn message(&self) -> &str {
+        self.0.as_str()
+    }
+
+    fn as_error(&self) -> &(dyn StdError + Send + Sync + 'static) {
+        self
+    }
+
+    fn as_error_mut(&mut self) -> &mut (dyn StdError + Send + Sync + 'static) {
+        self
+    }
+
+    fn into_error(self: Box<Self>) -> Box<dyn StdError + Send + Sync + 'static> {
+        Box::new(self)
     }
 }
