@@ -78,7 +78,7 @@ pub fn parse_local_time_str(ts: &str, fmt: &str) -> Result<DateTime<Local>, MySq
 }
 
 #[derive(Debug)]
-pub struct MySqxErr(String);
+pub struct MySqxErr(pub String);
 
 impl Display for MySqxErr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
