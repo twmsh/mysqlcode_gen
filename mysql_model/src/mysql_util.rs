@@ -1,9 +1,12 @@
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter};
+use std::time::Duration;
 
 use chrono::prelude::*;
 use chrono::LocalResult;
 use sqlx::error::DatabaseError;
+use sqlx::{Executor, MySql, Pool};
+use sqlx::mysql::MySqlPoolOptions;
 
 // 从驱动层(sqlx)读取的时间，被认为是UtC时间，实际不是
 pub fn fix_read_dt(dt: &mut DateTime<Local>, db_offset: &FixedOffset) {
@@ -14,14 +17,29 @@ pub fn fix_read_dt(dt: &mut DateTime<Local>, db_offset: &FixedOffset) {
         .unwrap();
 
     let dst_dt = db_local.with_timezone(&Local);
-
     *dt = dst_dt;
+}
+
+pub fn fix_read_dt_option(dt: &mut Option<DateTime<Local>>, db_offset: &FixedOffset) {
+    if let Some(v) = dt {
+        fix_read_dt(v, db_offset);
+    }
 }
 
 // 驱动层(sqlx)会将DateTime<Local>类型，转成utc时间。对NaiveDateTime类型不做变动
 pub fn fix_write_dt(dt: &DateTime<Local>, db_offset: &FixedOffset) -> NaiveDateTime {
     let db_local = dt.with_timezone(db_offset);
     db_local.naive_local()
+}
+
+pub fn fix_write_dt_option(
+    dt: &Option<DateTime<Local>>,
+    db_offset: &FixedOffset,
+) -> Option<NaiveDateTime> {
+    match dt {
+        None => None,
+        Some(v) => Some(fix_write_dt(v, db_offset)),
+    }
 }
 
 // 解析字符串得到时区 例如："+08:00"
@@ -54,6 +72,34 @@ pub fn parse_timezone(tz: &str) -> std::result::Result<FixedOffset, String> {
         Ok(FixedOffset::west(seconds as i32))
     }
 }
+
+//---------------------------------------------------
+pub async fn init_pool(
+    db_url: &str,
+    tz: &str,
+    max_conn: u32,
+    min_conn: u32,
+) -> Result<Pool<MySql>, sqlx::Error> {
+    let tz_str = tz.to_string();
+
+    let pool = MySqlPoolOptions::new()
+        .max_connections(max_conn)
+        .min_connections(min_conn)
+        .idle_timeout(Duration::from_secs(60 * 10))
+        .after_connect(move |conn| {
+            let tz_str = tz_str.clone();
+            Box::pin(async move {
+                let sql = format!("set time_zone = '{}'", tz_str);
+                conn.execute(sql.as_str()).await?;
+                println!("set end.");
+                Ok(())
+            })
+        })
+        .connect(db_url)
+        .await?;
+    Ok(pool)
+}
+
 
 //------------------------------------------------------
 pub fn parse_local_time_str(ts: &str, fmt: &str) -> Result<DateTime<Local>, MySqxErr> {
