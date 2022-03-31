@@ -1,11 +1,11 @@
-use std::sync::Arc;
 use chrono::{DateTime, Local};
 use mysql_model::model::BeUser;
 use mysql_model::mysql_util;
 use mysql_model::mysql_util::MySqxErr;
+use std::sync::Arc;
 
 #[tokio::main]
-async fn main()-> Result<(),sqlx::Error> {
+async fn main() -> Result<(), sqlx::Error> {
     let tz = "+08:00";
     let db_url = "mysql://cf_user:cf123456@192.168.1.26:3306/cf_rs";
     let pool = mysql_util::init_pool(db_url, tz, 20, 4).await?;
@@ -38,15 +38,15 @@ async fn main()-> Result<(),sqlx::Error> {
         gmt_modified: now,
     };
 
-    let rst = obj.insert(&pool,&offset).await?;
-    println!("insert id: {}",rst);
+    let rst = obj.insert(&pool, &offset).await?;
+    println!("insert id: {}", rst);
 
     obj.id = rst as i32;
 
-    let rst = BeUser::get_by_id(&pool,&offset,obj.id as i64).await?;
-    println!("select: {:?}",rst);
+    let rst = BeUser::get_by_id(&pool, &offset, obj.id as i64).await?;
+    println!("select: {:?}", rst);
 
-    let rst = BeUser::delete_by_id(&pool,obj.id as i64).await?;
-    println!("del rows: {:?}",rst);
+    let rst = BeUser::delete_by_id(&pool, obj.id as i64).await?;
+    println!("del rows: {:?}", rst);
     Ok(())
 }

@@ -1,4 +1,3 @@
-
 use chrono::FixedOffset;
 use mysql_model::model;
 use mysql_model::mysql_util::{self, MySqxErr};
@@ -6,8 +5,6 @@ use sqlx::mysql::MySqlPoolOptions;
 use sqlx::{Executor, MySql, Pool};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -62,7 +59,7 @@ async fn main() -> Result<(), sqlx::Error> {
     }
 
     for h in handles {
-        let _= h.await;
+        let _ = h.await;
     }
     println!("app end. use:{}", app_begin.elapsed().as_millis());
     Ok(())

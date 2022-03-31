@@ -28,30 +28,34 @@ pub struct BeUser {
 }
 
 impl BeUser {
-    pub async fn  get_by_id(pool: &Pool<MySql>, tz: &FixedOffset, id: i64) -> Result<Option<Self>,sqlx::Error> {
+    pub async fn get_by_id(
+        pool: &Pool<MySql>,
+        tz: &FixedOffset,
+        id: i64,
+    ) -> Result<Option<Self>, sqlx::Error> {
         let sql = "select * from be_user where id = ?";
-        let mut rst = sqlx::query_as::<_,BeUser>(sql)
+        let mut rst = sqlx::query_as::<_, BeUser>(sql)
             .bind(id)
-            .fetch_optional(pool).await?;
+            .fetch_optional(pool)
+            .await?;
 
         if let Some(ref mut v) = rst {
-            mysql_util::fix_read_dt_option(&mut v.last_login,tz);
-            mysql_util::fix_read_dt_option(&mut v.token_expire,tz);
-            mysql_util::fix_read_dt(&mut v.gmt_create,tz);
-            mysql_util::fix_read_dt(&mut v.gmt_modified,tz);
+            mysql_util::fix_read_dt_option(&mut v.last_login, tz);
+            mysql_util::fix_read_dt_option(&mut v.token_expire, tz);
+            mysql_util::fix_read_dt(&mut v.gmt_create, tz);
+            mysql_util::fix_read_dt(&mut v.gmt_modified, tz);
         }
-
 
         Ok(rst)
     }
 
-    pub async fn delete_by_id(pool: &Pool<MySql>,  id: i64) -> Result<u64,sqlx::Error> {
+    pub async fn delete_by_id(pool: &Pool<MySql>, id: i64) -> Result<u64, sqlx::Error> {
         let sql = "delete from be_user where id = ?";
         let rst = sqlx::query(sql).bind(id).execute(pool).await?;
         Ok(rst.rows_affected())
     }
 
-    pub async fn insert(&self,pool: &Pool<MySql>, tz: &FixedOffset ) -> Result<u64,sqlx::Error> {
+    pub async fn insert(&self, pool: &Pool<MySql>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
         let sql = "insert into be_user(name,login_name,password,salt, token,phone,email,service_flag,ref_count,last_login,token_expire,memo,gmt_create,gmt_modified) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         let mut args = MySqlArguments::default();
 
@@ -66,18 +70,16 @@ impl BeUser {
         args.add(self.service_flag.clone());
         args.add(self.ref_count.clone());
 
-        args.add(mysql_util::fix_write_dt_option(&self.last_login,tz));
-        args.add(mysql_util::fix_write_dt_option(&self.token_expire,tz));
+        args.add(mysql_util::fix_write_dt_option(&self.last_login, tz));
+        args.add(mysql_util::fix_write_dt_option(&self.token_expire, tz));
         args.add(self.memo.clone());
-        args.add(mysql_util::fix_write_dt(&self.gmt_create,tz));
-        args.add(mysql_util::fix_write_dt(&self.gmt_modified,tz));
+        args.add(mysql_util::fix_write_dt(&self.gmt_create, tz));
+        args.add(mysql_util::fix_write_dt(&self.gmt_modified, tz));
 
-        let rst = sqlx::query_with(sql,args).execute(pool).await?;
+        let rst = sqlx::query_with(sql, args).execute(pool).await?;
         Ok(rst.last_insert_id())
     }
-
 }
-
 
 //-------------------------------------------
 
