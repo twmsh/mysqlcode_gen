@@ -52,7 +52,7 @@ impl BeUser {
     }
 
     pub async fn insert(&self,pool: &Pool<MySql>, tz: &FixedOffset ) -> Result<u64,sqlx::Error> {
-        let sql = "insert into be_user(name,login_name,password,salt, token,phone,email,service_flag,ref_count,last_login,token_expire,memo,gmt_create,gmt_modified) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        let sql = "insert into be_user(name,login_name,password,salt, token,phone,email,service_flag,ref_count,last_login,token_expire,memo,gmt_create,gmt_modified) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         let mut args = MySqlArguments::default();
 
         args.add(self.name.clone());
