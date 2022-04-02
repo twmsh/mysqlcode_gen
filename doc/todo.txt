@@ -14,3 +14,14 @@ sqlx 测试代码编写 (list,get, insert,update, delete)
 宏代码编写
 自动将数据库表导出成rust结构
 
+#[derive(MysqlEntity)]
+#[table="be_user"]
+pub struct BeUser {
+    #[pk]
+    pub id: i64,
+
+    #[colum="loginname"]
+    pub login_name: String,
+
+
+}
