@@ -7,16 +7,6 @@ use syn::{
     MetaNameValue, Path, Result, Type, TypePath,
 };
 
-struct Column {
-    column_name: String,
-    attr_name: String,
-}
-
-struct Table {
-    table_name: String,
-    pk_column: String,
-    columns: Vec<Column>,
-}
 
 //--------------------------------------
 
@@ -50,6 +40,37 @@ fn find_table_name_from_deriveinput(st: &DeriveInput) -> syn::Result<Option<Stri
     }
     Ok(None)
 }
+
+// 不是pk的表字段
+fn get_normal_fields(st:&DeriveInput) -> syn::Result<Vec<&Field>> {
+    let fields = match st.data {
+        Data::Struct(DataStruct {
+                         fields: Fields::Named(FieldsNamed { ref named, .. }),
+                         ..
+                     }) => named,
+        _ => {
+            return Ok(vec![]);
+        }
+    };
+    let mut normal_fields = Vec::new();
+
+    for field in fields.iter() {
+
+        let is_pk = field.attrs.iter().any(|f| {
+            if f.path.is_ident("pk") {
+                true
+            }else{
+                false
+            }
+        });
+
+        if !is_pk {
+            normal_fields.push(field);
+        }
+    }
+    Ok(normal_fields)
+}
+
 
 fn find_pk_filed(st: &DeriveInput) -> syn::Result<Option<&Field>> {
     let fields = match st.data {
@@ -191,7 +212,7 @@ fn generate_delete_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 //         Ok(rst)
 //     }
 
-fn generate_select_by_id(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
+fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
     let table = match find_table_name_from_deriveinput(st)? {
         None => {
             return Err(syn::Error::new_spanned(st, "can't find table attr"));
@@ -273,7 +294,7 @@ fn generate_select_by_id(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
 //         Ok(rst.last_insert_id())
 //     }
 
-fn generate_insert(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
+fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
     let table = match find_table_name_from_deriveinput(st)? {
         None => {
             return Err(syn::Error::new_spanned(st, "can't find table attr"));
@@ -281,23 +302,26 @@ fn generate_insert(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
         Some(v) => v,
     };
 
-    let pk_field = match find_pk_filed(st)? {
-        None => {
-            return Err(syn::Error::new_spanned(st, "can't find pk attr"));
-        }
-        Some(v) => v,
-    };
+
     let ident = &st.ident;
-    let pk_ident = pk_field.ident.clone().unwrap();
-    let ty = &pk_field.ty;
+    let normal_fields = get_normal_fields(st)?;
+    if normal_fields.is_empty() {
+        return Err(syn::Error::new_spanned(st, "non-pk fields is empty"));
+    }
 
-    let column = match get_column_name(pk_field)? {
-        None => pk_ident.to_string(),
-        Some(v) => v,
-    };
+    let mut normal_columns = Vec::new();
+    for field in normal_fields.iter() {
+        let column = get_column_name(field)?.unwrap();
+        normal_columns.push(column);
+    }
 
-    let sql_str = format!("select * from {} where {} = ?", table, column);
-    let sql_lit = syn::LitStr::new(sql_str.as_str(), st.span());
+    let columns_str = normal_columns.join(",");
+    let mut question_marks = "?,".repeat(normal_columns.len());
+    let _ = question_marks.split_off(question_marks.len()-1);
+
+
+    let sql_str = format!("insert into {}({}) values({})", table, columns_str,question_marks);
+
 
     let datetime_fields = find_datetime_fields(st)?;
 
@@ -365,34 +389,14 @@ fn travel_it(st: &syn::DeriveInput) {
     }
 }
 
-fn get_table_name(st: &syn::DeriveInput) -> syn::Result<String> {
-    for attr in st.attrs.iter() {
-        // eprintln!("attr: {:#?}",attr);
 
-        // eprintln!("{:#?}",attr.parse_meta());
-
-        if attr.path.is_ident("table") {
-            if let Ok(Meta::NameValue(MetaNameValue {
-                lit: Lit::Str(list_str),
-                ..
-            })) = attr.parse_meta()
-            {
-                // let value:Path = list_str.parse().unwrap();
-                // println!("--> list_str: {:?}", list_str);
-                return Ok(list_str.value());
-            }
-        }
-    }
-
-    return Err(syn::Error::new_spanned(&st, "can't find table".to_string()));
-}
 
 #[proc_macro_derive(MysqlEntity, attributes(table, pk, column))]
 pub fn mysql_entity(input: TokenStream) -> TokenStream {
     let ast = syn::parse::<DeriveInput>(input).unwrap();
 
     let piece_delete_function = generate_delete_function(&ast).unwrap();
-    let piece_select_by_id = generate_select_by_id(&ast).unwrap();
+    let piece_select_by_id = generate_select_function(&ast).unwrap();
     let piece = quote::quote! {
         impl BeUser {
             #piece_delete_function
