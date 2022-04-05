@@ -2,7 +2,6 @@ use chrono::{DateTime, Local};
 use mysql_codegen::MysqlEntity;
 
 #[derive(MysqlEntity)]
-#[derive(Debug)]
 #[table="cf_source"]
 pub struct CfSource {
     #[pk]
