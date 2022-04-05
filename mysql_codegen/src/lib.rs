@@ -229,16 +229,12 @@ fn generate_select_by_id(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
         }
     };
 
-
-
-
     let piece = quote::quote! {
         pub async fn get_by_id(
         pool: &sqlx::Pool<sqlx::MySql>,
         tz: &chrono::FixedOffset,
         #pk_ident: #ty,
-    ) -> std::result::Result<Option<Self>, sqlx::Error>
-        {
+        ) -> std::result::Result<Option<Self>, sqlx::Error> {
             let mut rst = sqlx::query_as::<_, #ident>(sql)
                 .bind(#pk_ident)
                 .fetch_optional(pool)
@@ -247,7 +243,88 @@ fn generate_select_by_id(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
             #date_piece
             Ok(rst)
         }
+    };
+    Ok(piece)
+}
 
+
+// pub async fn insert(&self, pool: &Pool<MySql>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
+//         let sql = "insert into be_user(name,login_name,password,salt, token,phone,email,service_flag,ref_count,last_login,token_expire,memo,gmt_create,gmt_modified) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+//         let mut args = MySqlArguments::default();
+//
+//         args.add(self.name.clone());
+//         args.add(self.login_name.clone());
+//         args.add(self.password.clone());
+//         args.add(self.salt.clone());
+//
+//         args.add(self.token.clone());
+//         args.add(self.phone.clone());
+//         args.add(self.email.clone());
+//         args.add(self.service_flag.clone());
+//         args.add(self.ref_count.clone());
+//
+//         args.add(mysql_util::fix_write_dt_option(&self.last_login, tz));
+//         args.add(mysql_util::fix_write_dt_option(&self.token_expire, tz));
+//         args.add(self.memo.clone());
+//         args.add(mysql_util::fix_write_dt(&self.gmt_create, tz));
+//         args.add(mysql_util::fix_write_dt(&self.gmt_modified, tz));
+//
+//         let rst = sqlx::query_with(sql, args).execute(pool).await?;
+//         Ok(rst.last_insert_id())
+//     }
+
+fn generate_insert(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
+    let table = match find_table_name_from_deriveinput(st)? {
+        None => {
+            return Err(syn::Error::new_spanned(st, "can't find table attr"));
+        }
+        Some(v) => v,
+    };
+
+    let pk_field = match find_pk_filed(st)? {
+        None => {
+            return Err(syn::Error::new_spanned(st, "can't find pk attr"));
+        }
+        Some(v) => v,
+    };
+    let ident = &st.ident;
+    let pk_ident = pk_field.ident.clone().unwrap();
+    let ty = &pk_field.ty;
+
+    let column = match get_column_name(pk_field)? {
+        None => pk_ident.to_string(),
+        Some(v) => v,
+    };
+
+    let sql_str = format!("select * from {} where {} = ?", table, column);
+    let sql_lit = syn::LitStr::new(sql_str.as_str(), st.span());
+
+    let datetime_fields = find_datetime_fields(st)?;
+
+    let date_piece = if datetime_fields.is_empty() {
+        quote::quote! {}
+    }else{
+        quote::quote! {
+            if let Some(ref mut v) = rst {
+                #(mysql_util::fix_read_dt_option(&mut v.#datetime_fields, tz));*
+            }
+        }
+    };
+
+    let piece = quote::quote! {
+        pub async fn get_by_id(
+        pool: &sqlx::Pool<sqlx::MySql>,
+        tz: &chrono::FixedOffset,
+        #pk_ident: #ty,
+        ) -> std::result::Result<Option<Self>, sqlx::Error> {
+            let mut rst = sqlx::query_as::<_, #ident>(sql)
+                .bind(#pk_ident)
+                .fetch_optional(pool)
+                .await?;
+
+            #date_piece
+            Ok(rst)
+        }
     };
     Ok(piece)
 }
@@ -313,11 +390,6 @@ fn get_table_name(st: &syn::DeriveInput) -> syn::Result<String> {
 #[proc_macro_derive(MysqlEntity, attributes(table, pk, column))]
 pub fn mysql_entity(input: TokenStream) -> TokenStream {
     let ast = syn::parse::<DeriveInput>(input).unwrap();
-    // println!("{:#?}", ast);
-
-    // let table = get_table_name(&ast);
-    // eprintln!("table: {:#?}", table);
-    // travel_it(&ast);
 
     let piece_delete_function = generate_delete_function(&ast).unwrap();
     let piece_select_by_id = generate_select_by_id(&ast).unwrap();
