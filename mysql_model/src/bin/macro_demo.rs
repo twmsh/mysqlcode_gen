@@ -52,6 +52,30 @@ async fn main() -> Result<(), sqlx::Error> {
     let affect = BeUser::delete_by_id(&pool,10).await?;
     println!("affect: {:?}",affect);
 
+    let now = Local::now();
+
+    let beuser = BeUser {
+        id: 0,
+        name: Some("name".to_string()),
+        login_name: "login_name".to_string(),
+        password: "password".to_string(),
+        salt: "salt".to_string(),
+        token: Some("token".to_string()),
+        phone:  Some("phone".to_string()),
+        email: Some("email".to_string()),
+        service_flag: Some(20),
+        ref_count: Some(10),
+        last_login: Some(now),
+        token_expire: Some(now),
+        memo: Some("memo".to_string()),
+        gmt_create: now,
+        gmt_modified: now
+    };
+    
+    let affect = beuser.insert(&pool,&offset).await?;
+    println!("insert: {:?}",affect);
+    
+    
 
     Ok(())
 }
