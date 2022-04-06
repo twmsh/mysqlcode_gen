@@ -1,12 +1,14 @@
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
+
 use syn::spanned::Spanned;
-use syn::{AngleBracketedGenericArguments, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, FieldsNamed, GenericArgument, Ident, Lit, LitStr, Meta, MetaNameValue, Path, PathArguments, PathSegment, Result, Type, TypePath};
+use syn::{
+    AngleBracketedGenericArguments, Data, DataStruct, DeriveInput, Field, Fields, FieldsNamed,
+    GenericArgument, Lit, LitStr, Meta, MetaNameValue, PathArguments, Result, Type,
+    TypePath,
+};
 
 //--------------------------------------
-
-type StructFields = syn::punctuated::Punctuated<syn::Field, syn::Token![,]>;
 
 // #[derive(MysqlEntity)]
 // #[derive(Debug)]
@@ -63,6 +65,20 @@ fn get_non_pk_fields(st: &DeriveInput) -> syn::Result<Vec<&Field>> {
     Ok(normal_fields)
 }
 
+fn get_all_fields(st: &DeriveInput) -> syn::Result<Vec<&Field>> {
+    let fields = match st.data {
+        Data::Struct(DataStruct {
+            fields: Fields::Named(FieldsNamed { ref named, .. }),
+            ..
+        }) => named,
+        _ => {
+            return Ok(vec![]);
+        }
+    };
+
+    Ok(fields.iter().collect())
+}
+
 fn find_pk_filed(st: &DeriveInput) -> syn::Result<Option<&Field>> {
     let fields = match st.data {
         Data::Struct(DataStruct {
@@ -106,6 +122,7 @@ fn get_column_name(field: &Field) -> syn::Result<Option<String>> {
     }
 }
 
+/*
 fn find_datetime_fields(st: &syn::DeriveInput) -> syn::Result<Vec<&Ident>> {
     let fields = match st.data {
         Data::Struct(DataStruct {
@@ -133,6 +150,7 @@ fn find_datetime_fields(st: &syn::DeriveInput) -> syn::Result<Vec<&Ident>> {
 
     Ok(field_list)
 }
+*/
 
 // 生成删除函数
 // 获取表名，pk字段名词，类型
@@ -199,6 +217,38 @@ fn generate_delete_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 //         Ok(rst)
 //     }
 
+fn generate_select_date_piece(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
+    let fields = get_all_fields(st)?;
+    let mut piece_list = Vec::new();
+
+    for field in fields.iter() {
+        let ident = field.ident.clone().unwrap();
+        match is_datetime_field(field)? {
+            1 => {
+                piece_list.push(quote::quote! {
+                    mysql_util::fix_read_dt(&mut v.#ident, tz);
+                });
+            }
+            2 => {
+                piece_list.push(quote::quote! {
+                    mysql_util::fix_read_dt_option(&mut v.#ident, tz);
+                });
+            }
+            _ => {}
+        }
+    }
+
+    if piece_list.is_empty() {
+        Ok(TokenStream2::new())
+    } else {
+        Ok(quote::quote! {
+            if let Some(ref mut v) = rst {
+                #(#piece_list);*
+            }
+        })
+    }
+}
+
 fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
     let table = match find_table_name_from_deriveinput(st)? {
         None => {
@@ -229,18 +279,7 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
         let sql = #sql_lit;
     };
 
-
-    let datetime_fields = find_datetime_fields(st)?;
-
-    let date_piece = if datetime_fields.is_empty() {
-        quote::quote! {}
-    } else {
-        quote::quote! {
-            if let Some(ref mut v) = rst {
-                #(mysql_util::fix_read_dt_option(&mut v.#datetime_fields, tz));*
-            }
-        }
-    };
+    let date_piece = generate_select_date_piece(st)?;
 
     let piece = quote::quote! {
         pub async fn get_by_id(
@@ -300,6 +339,7 @@ fn is_datetime_field(field: &Field) -> Result<u8> {
 }
 
 // 生成 MySqlArguments
+/*
 fn generate_insert_arguments(st: &syn::DeriveInput) -> Result<Vec<TokenStream2>> {
     let pieces = Vec::new();
 
@@ -339,6 +379,7 @@ fn generate_insert_arguments(st: &syn::DeriveInput) -> Result<Vec<TokenStream2>>
 
     Ok(pieces)
 }
+*/
 
 // pub async fn insert(&self, pool: &Pool<MySql>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
 //         let sql = "insert into be_user(name,login_name,password,salt, token,phone,email,service_flag,ref_count,last_login,token_expire,memo,gmt_create,gmt_modified) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -373,7 +414,6 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
         Some(v) => v,
     };
 
-    let ident = &st.ident;
     let nonpk_fields = get_non_pk_fields(st)?;
     if nonpk_fields.is_empty() {
         return Err(syn::Error::new_spanned(st, "non-pk fields is empty"));
@@ -392,7 +432,7 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
         "insert into {}({}) values({})",
         table, columns_str, question_marks
     );
-    let sql_lit = LitStr::new(sql_str.as_str(),st.span());
+    let sql_lit = LitStr::new(sql_str.as_str(), st.span());
 
     let mut mysql_arguments_piece = Vec::new();
     for field in nonpk_fields.iter() {
@@ -422,7 +462,7 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
          pub async fn insert(&self, pool: &sqlx::Pool<sqlx::MySql>,
                         tz: &chrono::FixedOffset,) -> Result<u64, sqlx::Error> {
             let sql = #sql_lit;
-            let mut args = MySqlArguments::default();
+            let mut args = sqlx::mysql::MySqlArguments::default();
 
             #(#mysql_arguments_piece);*
 
@@ -435,6 +475,7 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     Ok(piece)
 }
 
+/*
 fn get_fields_from_derive_input(st: &syn::DeriveInput) -> syn::Result<&StructFields> {
     if let syn::Data::Struct(syn::DataStruct {
         fields: syn::Fields::Named(syn::FieldsNamed { ref named, .. }),
@@ -449,7 +490,9 @@ fn get_fields_from_derive_input(st: &syn::DeriveInput) -> syn::Result<&StructFie
         ))
     }
 }
+*/
 
+/*
 fn travel_it(st: &syn::DeriveInput) {
     eprintln!("==== struct attr =======");
     for attr in st.attrs.iter() {
@@ -470,6 +513,7 @@ fn travel_it(st: &syn::DeriveInput) {
         }
     }
 }
+*/
 
 #[proc_macro_derive(MysqlEntity, attributes(table, pk, column))]
 pub fn mysql_entity(input: TokenStream) -> TokenStream {
@@ -479,15 +523,15 @@ pub fn mysql_entity(input: TokenStream) -> TokenStream {
     let piece_select_by_id = generate_select_function(&ast).unwrap();
     let piece_insert_function = generate_insert_function(&ast).unwrap();
 
+    let ident = &ast.ident;
+
     let piece = quote::quote! {
-        impl BeUser {
+        impl #ident {
             #piece_delete_function
             #piece_select_by_id
             #piece_insert_function
         }
     };
-
     piece.into()
 
-    // TokenStream::new()
 }
