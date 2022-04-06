@@ -2,11 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::spanned::Spanned;
-use syn::{
-    Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, FieldsNamed, Ident, Lit, Meta,
-    MetaNameValue, Path, Result, Type, TypePath,
-};
-
+use syn::{AngleBracketedGenericArguments, Attribute, Data, DataStruct, DeriveInput, Error, Field, Fields, FieldsNamed, GenericArgument, Ident, Lit, LitStr, Meta, MetaNameValue, Path, PathArguments, PathSegment, Result, Type, TypePath};
 
 //--------------------------------------
 
@@ -42,12 +38,12 @@ fn find_table_name_from_deriveinput(st: &DeriveInput) -> syn::Result<Option<Stri
 }
 
 // 不是pk的表字段
-fn get_normal_fields(st:&DeriveInput) -> syn::Result<Vec<&Field>> {
+fn get_non_pk_fields(st: &DeriveInput) -> syn::Result<Vec<&Field>> {
     let fields = match st.data {
         Data::Struct(DataStruct {
-                         fields: Fields::Named(FieldsNamed { ref named, .. }),
-                         ..
-                     }) => named,
+            fields: Fields::Named(FieldsNamed { ref named, .. }),
+            ..
+        }) => named,
         _ => {
             return Ok(vec![]);
         }
@@ -55,14 +51,10 @@ fn get_normal_fields(st:&DeriveInput) -> syn::Result<Vec<&Field>> {
     let mut normal_fields = Vec::new();
 
     for field in fields.iter() {
-
-        let is_pk = field.attrs.iter().any(|f| {
-            if f.path.is_ident("pk") {
-                true
-            }else{
-                false
-            }
-        });
+        let is_pk = field
+            .attrs
+            .iter()
+            .any(|f| if f.path.is_ident("pk") { true } else { false });
 
         if !is_pk {
             normal_fields.push(field);
@@ -70,7 +62,6 @@ fn get_normal_fields(st:&DeriveInput) -> syn::Result<Vec<&Field>> {
     }
     Ok(normal_fields)
 }
-
 
 fn find_pk_filed(st: &DeriveInput) -> syn::Result<Option<&Field>> {
     let fields = match st.data {
@@ -135,14 +126,10 @@ fn find_datetime_fields(st: &syn::DeriveInput) -> syn::Result<Vec<&Ident>> {
                     if let Some(ref ident) = field.ident {
                         field_list.push(ident);
                     }
-
                 }
             }
         }
     }
-
-    eprintln!("===> {}",field_list.len());
-    eprintln!("===> {:#?}",field_list);
 
     Ok(field_list)
 }
@@ -238,11 +225,16 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     let sql_str = format!("select * from {} where {} = ?", table, column);
     let sql_lit = syn::LitStr::new(sql_str.as_str(), st.span());
 
+    let sql_piece = quote::quote! {
+        let sql = #sql_lit;
+    };
+
+
     let datetime_fields = find_datetime_fields(st)?;
 
     let date_piece = if datetime_fields.is_empty() {
         quote::quote! {}
-    }else{
+    } else {
         quote::quote! {
             if let Some(ref mut v) = rst {
                 #(mysql_util::fix_read_dt_option(&mut v.#datetime_fields, tz));*
@@ -256,6 +248,7 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
         tz: &chrono::FixedOffset,
         #pk_ident: #ty,
         ) -> std::result::Result<Option<Self>, sqlx::Error> {
+            #sql_piece
             let mut rst = sqlx::query_as::<_, #ident>(sql)
                 .bind(#pk_ident)
                 .fetch_optional(pool)
@@ -268,6 +261,84 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     Ok(piece)
 }
 
+// 判断是否是 DateTime或 Option<DateTime>
+// 1: DateTime 2:Option<DateTime> 0: non Datetime
+// 例如：std::option::Option<chrono::DateTime<chrono::Local>>,
+fn is_datetime_field(field: &Field) -> Result<u8> {
+    let ty = match field.ty {
+        Type::Path(ref v) => v,
+        _ => {
+            return Err(syn::Error::new_spanned(field, "not a TypePath"));
+        }
+    };
+
+    // 检查DateTime类型
+    let is_datetime = ty.path.segments.iter().any(|f| f.ident == "DateTime");
+    if is_datetime {
+        return Ok(1);
+    }
+
+    // 检查 Option<DateTime>类型
+    let option_seg = match ty.path.segments.iter().find(|f| f.ident == "Option") {
+        None => {
+            return Ok(0);
+        }
+        Some(v) => v,
+    };
+    if let PathArguments::AngleBracketed(AngleBracketedGenericArguments { ref args, .. }) =
+        option_seg.arguments
+    {
+        // 查找有没有 DateTime
+        if let Some(GenericArgument::Type(Type::Path(TypePath { path, .. }))) = args.first() {
+            if path.segments.iter().any(|f| f.ident == "DateTime") {
+                return Ok(2);
+            }
+        }
+    }
+
+    Ok(0)
+}
+
+// 生成 MySqlArguments
+fn generate_insert_arguments(st: &syn::DeriveInput) -> Result<Vec<TokenStream2>> {
+    let pieces = Vec::new();
+
+    let fields = match st.data {
+        Data::Struct(syn::DataStruct {
+            fields: syn::Fields::Named(syn::FieldsNamed { ref named, .. }),
+            ..
+        }) => named,
+        _ => {
+            return Err(syn::Error::new_spanned(
+                &st,
+                "can't find Punctuated".to_string(),
+            ));
+        }
+    };
+
+    for field in fields.iter() {
+        let is_pk = field
+            .attrs
+            .iter()
+            .any(|f| if f.path.is_ident("pk") { true } else { false });
+        if is_pk {
+            // 主键的不添加
+            continue;
+        }
+
+        if let Type::Path(TypePath { ref path, .. }) = field.ty {
+            if let Some(seg) = path.segments.first() {
+                // 判断是否 DateTime字段
+
+                if seg.ident == "DateTime" {
+                    if let Some(ref ident) = field.ident {}
+                }
+            }
+        }
+    }
+
+    Ok(pieces)
+}
 
 // pub async fn insert(&self, pool: &Pool<MySql>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
 //         let sql = "insert into be_user(name,login_name,password,salt, token,phone,email,service_flag,ref_count,last_login,token_expire,memo,gmt_create,gmt_modified) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -302,53 +373,64 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
         Some(v) => v,
     };
 
-
     let ident = &st.ident;
-    let normal_fields = get_normal_fields(st)?;
-    if normal_fields.is_empty() {
+    let nonpk_fields = get_non_pk_fields(st)?;
+    if nonpk_fields.is_empty() {
         return Err(syn::Error::new_spanned(st, "non-pk fields is empty"));
     }
 
-    let mut normal_columns = Vec::new();
-    for field in normal_fields.iter() {
+    let mut nonpk_columns = Vec::new();
+    for field in nonpk_fields.iter() {
         let column = get_column_name(field)?.unwrap();
-        normal_columns.push(column);
+        nonpk_columns.push(column);
     }
 
-    let columns_str = normal_columns.join(",");
-    let mut question_marks = "?,".repeat(normal_columns.len());
-    let _ = question_marks.split_off(question_marks.len()-1);
+    let columns_str = nonpk_columns.join(",");
+    let mut question_marks = "?,".repeat(nonpk_columns.len());
+    let _ = question_marks.split_off(question_marks.len() - 1);
+    let sql_str = format!(
+        "insert into {}({}) values({})",
+        table, columns_str, question_marks
+    );
+    let sql_lit = LitStr::new(sql_str.as_str(),st.span());
 
-
-    let sql_str = format!("insert into {}({}) values({})", table, columns_str,question_marks);
-
-
-    let datetime_fields = find_datetime_fields(st)?;
-
-    let date_piece = if datetime_fields.is_empty() {
-        quote::quote! {}
-    }else{
-        quote::quote! {
-            if let Some(ref mut v) = rst {
-                #(mysql_util::fix_read_dt_option(&mut v.#datetime_fields, tz));*
+    let mut mysql_arguments_piece = Vec::new();
+    for field in nonpk_fields.iter() {
+        let ident = &field.ident.clone().unwrap();
+        let argument_piece = match is_datetime_field(field)? {
+            1 => {
+                quote::quote! {
+                    args.add(mysql_util::fix_write_dt(&self.#ident, tz));
+                }
             }
-        }
-    };
+            2 => {
+                quote::quote! {
+                    args.add(mysql_util::fix_write_dt_option(&self.#ident, tz));
+                }
+            }
+            _ => {
+                quote::quote! {
+                    args.add(self.#ident.clone());
+                }
+            }
+        };
+        mysql_arguments_piece.push(argument_piece);
+    }
 
     let piece = quote::quote! {
-        pub async fn get_by_id(
-        pool: &sqlx::Pool<sqlx::MySql>,
-        tz: &chrono::FixedOffset,
-        #pk_ident: #ty,
-        ) -> std::result::Result<Option<Self>, sqlx::Error> {
-            let mut rst = sqlx::query_as::<_, #ident>(sql)
-                .bind(#pk_ident)
-                .fetch_optional(pool)
-                .await?;
 
-            #date_piece
-            Ok(rst)
+         pub async fn insert(&self, pool: &sqlx::Pool<sqlx::MySql>,
+                        tz: &chrono::FixedOffset,) -> Result<u64, sqlx::Error> {
+            let sql = #sql_lit;
+            let mut args = MySqlArguments::default();
+
+            #(#mysql_arguments_piece);*
+
+            let rst = sqlx::query_with(sql, args).execute(pool).await?;
+             Ok(rst.last_insert_id())
         }
+
+
     };
     Ok(piece)
 }
@@ -389,19 +471,19 @@ fn travel_it(st: &syn::DeriveInput) {
     }
 }
 
-
-
 #[proc_macro_derive(MysqlEntity, attributes(table, pk, column))]
 pub fn mysql_entity(input: TokenStream) -> TokenStream {
     let ast = syn::parse::<DeriveInput>(input).unwrap();
 
     let piece_delete_function = generate_delete_function(&ast).unwrap();
     let piece_select_by_id = generate_select_function(&ast).unwrap();
+    let piece_insert_function = generate_insert_function(&ast).unwrap();
+
     let piece = quote::quote! {
         impl BeUser {
             #piece_delete_function
             #piece_select_by_id
-
+            #piece_insert_function
         }
     };
 

@@ -9,8 +9,9 @@ pub struct CfSource {
     pub id: i64,
     pub name: String,
 
-    #[column="create_time"]
-    pub gmt_create: DateTime<Local>,
+    #[column="login_time"]
+    pub last_login: std::option::Option<chrono::DateTime<chrono::Local>>,
+
 }
 
 pub fn main() {
