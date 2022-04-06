@@ -1,10 +1,10 @@
-use chrono::FixedOffset;
+// use chrono::FixedOffset;
 use mysql_model::model;
 use mysql_model::mysql_util::{self, MySqxErr};
-use sqlx::mysql::MySqlPoolOptions;
-use sqlx::{Executor, MySql, Pool};
+// use sqlx::mysql::MySqlPoolOptions;
+// use sqlx::{Executor, MySql, Pool};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{ Instant};
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {

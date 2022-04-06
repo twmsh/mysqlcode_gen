@@ -36,10 +36,10 @@ pub fn fix_write_dt_option(
     dt: &Option<DateTime<Local>>,
     db_offset: &FixedOffset,
 ) -> Option<NaiveDateTime> {
-    match dt {
-        None => None,
-        Some(v) => Some(fix_write_dt(v, db_offset)),
-    }
+    dt.map(|ref f| {
+        fix_write_dt(f, db_offset)
+    })
+
 }
 
 // 解析字符串得到时区 例如："+08:00"
@@ -49,14 +49,13 @@ pub fn parse_timezone(tz: &str) -> std::result::Result<FixedOffset, String> {
     if list.len() < 6 {
         return Err(format!("{} is invalid timezone", tz));
     }
-    let east;
-    match list[0] {
-        '+' => east = true,
-        '-' => east = false,
+    let east= match list[0] {
+        '+' => true,
+        '-' =>  false,
         _ => {
             return Err(format!("{} is invalid timezone", tz));
         }
-    }
+    };
 
     let ts = match NaiveTime::parse_from_str(&tz[1..], "%H:%M") {
         Ok(v) => v,

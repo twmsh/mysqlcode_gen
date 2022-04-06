@@ -53,11 +53,11 @@ async fn main() -> Result<(), sqlx::Error> {
     println!("affect: {:?}",affect);
 
     let now = Local::now();
-
+    let login_name = now.timestamp().to_string();
     let beuser = BeUser {
         id: 0,
         name: Some("name".to_string()),
-        login_name: "login_name".to_string(),
+        login_name,
         password: "password".to_string(),
         salt: "salt".to_string(),
         token: Some("token".to_string()),

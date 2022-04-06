@@ -1,11 +1,10 @@
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
 
+use proc_macro2::TokenStream as TokenStream2;
 use syn::spanned::Spanned;
 use syn::{
     AngleBracketedGenericArguments, Data, DataStruct, DeriveInput, Field, Fields, FieldsNamed,
-    GenericArgument, Lit, LitStr, Meta, MetaNameValue, PathArguments, Result, Type,
-    TypePath,
+    GenericArgument, Lit, LitStr, Meta, MetaNameValue, PathArguments, Result, Type, TypePath,
 };
 
 //--------------------------------------
@@ -56,7 +55,7 @@ fn get_non_pk_fields(st: &DeriveInput) -> syn::Result<Vec<&Field>> {
         let is_pk = field
             .attrs
             .iter()
-            .any(|f| if f.path.is_ident("pk") { true } else { false });
+            .any(|f| f.path.is_ident("pk") );
 
         if !is_pk {
             normal_fields.push(field);
@@ -533,5 +532,4 @@ pub fn mysql_entity(input: TokenStream) -> TokenStream {
         }
     };
     piece.into()
-
 }
