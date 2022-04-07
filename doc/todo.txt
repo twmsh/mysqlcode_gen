@@ -27,3 +27,5 @@ pub struct BeUser {
 }
 
 类型的长短问题，例如DateTime与 chrono::DateTime问题。
+
+命令行，参数，写文件。
