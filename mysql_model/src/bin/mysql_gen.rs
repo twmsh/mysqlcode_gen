@@ -207,6 +207,13 @@ async fn get_table_names(pool: &Pool<MySql>, db_name: &str) -> sqlx::Result<Vec<
     Ok(list)
 }
 
+fn render_import() -> String {
+    r#"use mysql_codegen::MysqlEntity;
+use mysql_model::mysql_util;
+use sqlx::{Arguments, FromRow};"#
+        .to_string()
+}
+
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let tz = "+08:00";
@@ -222,6 +229,8 @@ async fn main() -> Result<(), sqlx::Error> {
     let db_name = "cf_2.6";
     let tables = get_table_names(&pool, db_name).await?;
     println!("Find {} tables", tables.len());
+
+    println!("{}",render_import());
 
     let mut entity_list = Vec::new();
 
@@ -239,6 +248,8 @@ async fn main() -> Result<(), sqlx::Error> {
     for entity in entity_list.iter() {
         println!("{}", entity);
     }
+
+
 
     Ok(())
 }

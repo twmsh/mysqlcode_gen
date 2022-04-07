@@ -7,6 +7,7 @@ use syn::{
     GenericArgument, Lit, LitStr, Meta, MetaNameValue, PathArguments, Result, Type, TypePath,
 };
 
+
 //--------------------------------------
 
 // #[derive(MysqlEntity)]
