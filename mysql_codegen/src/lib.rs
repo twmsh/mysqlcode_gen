@@ -186,7 +186,7 @@ fn generate_delete_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     let sql_lit = syn::LitStr::new(sql_str.as_str(), st.span());
 
     let piece = quote::quote! {
-         pub async fn delete_by_id(pool: &sqlx::Pool<sqlx::MySql>, #pk_ident: #ty) -> std::result::Result<u64, sqlx::Error> {
+         pub async fn delete(#pk_ident: #ty,pool: &sqlx::Pool<sqlx::MySql>) -> std::result::Result<u64, sqlx::Error> {
             let sql = #sql_lit;
             let rst = sqlx::query(sql).bind(#pk_ident).execute(pool).await?;
             Ok(rst.rows_affected())
@@ -281,10 +281,10 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     let date_piece = generate_select_date_piece(st)?;
 
     let piece = quote::quote! {
-        pub async fn get_by_id(
-        pool: &sqlx::Pool<sqlx::MySql>,
-        tz: &chrono::FixedOffset,
-        #pk_ident: #ty,
+        pub async fn load(
+            #pk_ident: #ty,
+            pool: &sqlx::Pool<sqlx::MySql>,
+            tz: &chrono::FixedOffset
         ) -> std::result::Result<Option<Self>, sqlx::Error> {
             #sql_piece
             let mut rst = sqlx::query_as::<_, #ident>(sql)
@@ -474,6 +474,116 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     Ok(piece)
 }
 
+// pub async fn update(&self, pool: &Pool<MySql>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
+//         let sql = "update be_user set name = ?, ... ,gmt_modified =? where id = ?";
+//         let mut args = MySqlArguments::default();
+//
+//         args.add(self.name.clone());
+//         args.add(self.login_name.clone());
+//         args.add(self.password.clone());
+//         args.add(self.salt.clone());
+//
+//         args.add(self.token.clone());
+//         args.add(self.phone.clone());
+//         args.add(self.email.clone());
+//         args.add(self.service_flag.clone());
+//         args.add(self.ref_count.clone());
+//
+//         args.add(mysql_util::fix_write_dt_option(&self.last_login, tz));
+//         args.add(mysql_util::fix_write_dt_option(&self.token_expire, tz));
+//         args.add(self.memo.clone());
+//         args.add(mysql_util::fix_write_dt(&self.gmt_create, tz));
+//         args.add(mysql_util::fix_write_dt(&self.gmt_modified, tz));
+//
+//         let rst = sqlx::query_with(sql, args).execute(pool).await?;
+//         Ok(rst.last_insert_id())
+//     }
+
+fn generate_update_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
+    let table = match find_table_name_from_deriveinput(st)? {
+        None => {
+            return Err(syn::Error::new_spanned(st, "can't find table attr"));
+        }
+        Some(v) => v,
+    };
+
+    let pk_field = match find_pk_filed(st)? {
+        None => {
+            return Err(syn::Error::new_spanned(st, "can't find pk attr"));
+        }
+        Some(v) => v,
+    };
+    let pk_ident = pk_field.ident.clone().unwrap();
+    let pk_column = match get_column_name(pk_field)? {
+        None => pk_ident.to_string(),
+        Some(v) => v,
+    };
+
+    let nonpk_fields = get_non_pk_fields(st)?;
+    if nonpk_fields.is_empty() {
+        return Err(syn::Error::new_spanned(st, "non-pk fields is empty"));
+    }
+
+    let mut nonpk_columns = Vec::new();
+    for field in nonpk_fields.iter() {
+        let column = get_column_name(field)?.unwrap();
+        nonpk_columns.push(column);
+    }
+
+    let columns_str = nonpk_columns.iter().map(|f| format!("{} = ?",f))
+                            .collect::<Vec<String>>().join(",");
+    let mut question_marks = "?,".repeat(nonpk_columns.len());
+    let _ = question_marks.split_off(question_marks.len() - 1);
+    let sql_str = format!(
+        "update {} set {} where {} = ?",
+        table, columns_str, pk_column
+    );
+    let sql_lit = LitStr::new(sql_str.as_str(), st.span());
+
+    let mut mysql_arguments_piece = Vec::new();
+    for field in nonpk_fields.iter() {
+        let ident = &field.ident.clone().unwrap();
+        let argument_piece = match is_datetime_field(field)? {
+            1 => {
+                quote::quote! {
+                    args.add(mysql_util::fix_write_dt(&self.#ident, tz));
+                }
+            }
+            2 => {
+                quote::quote! {
+                    args.add(mysql_util::fix_write_dt_option(&self.#ident, tz));
+                }
+            }
+            _ => {
+                quote::quote! {
+                    args.add(self.#ident.clone());
+                }
+            }
+        };
+        mysql_arguments_piece.push(argument_piece);
+    }
+    mysql_arguments_piece.push(quote::quote! {
+        args.add(self.#pk_ident.clone());
+    });
+
+    let piece = quote::quote! {
+
+         pub async fn update(&self, pool: &sqlx::Pool<sqlx::MySql>,
+                        tz: &chrono::FixedOffset,) -> Result<u64, sqlx::Error> {
+            let sql = #sql_lit;
+            let mut args = sqlx::mysql::MySqlArguments::default();
+
+            #(#mysql_arguments_piece);*
+
+            let rst = sqlx::query_with(sql, args).execute(pool).await?;
+             Ok(rst.rows_affected())
+        }
+
+    };
+    Ok(piece)
+}
+
+
 /*
 fn get_fields_from_derive_input(st: &syn::DeriveInput) -> syn::Result<&StructFields> {
     if let syn::Data::Struct(syn::DataStruct {
@@ -521,14 +631,16 @@ pub fn mysql_entity(input: TokenStream) -> TokenStream {
     let piece_delete_function = generate_delete_function(&ast).unwrap();
     let piece_select_by_id = generate_select_function(&ast).unwrap();
     let piece_insert_function = generate_insert_function(&ast).unwrap();
+    let piece_update_function = generate_update_function(&ast).unwrap();
 
     let ident = &ast.ident;
 
     let piece = quote::quote! {
         impl #ident {
-            #piece_delete_function
             #piece_select_by_id
             #piece_insert_function
+            #piece_update_function
+            #piece_delete_function
         }
     };
     piece.into()

@@ -46,15 +46,15 @@ async fn main() -> Result<(), sqlx::Error> {
         }
     };
 
-   let beuser = BeUser::get_by_id(&pool,&offset,1).await?;
+   let beuser = BeUser::load(1,&pool,&offset).await?;
     println!("beuser: {:?}",beuser);
 
-    let affect = BeUser::delete_by_id(&pool,10).await?;
+    let affect = BeUser::delete(10,&pool).await?;
     println!("affect: {:?}",affect);
 
     let now = Local::now();
     let login_name = now.timestamp().to_string();
-    let beuser = BeUser {
+    let mut beuser = BeUser {
         id: 0,
         name: Some("name".to_string()),
         login_name,
@@ -74,8 +74,18 @@ async fn main() -> Result<(), sqlx::Error> {
     
     let affect = beuser.insert(&pool,&offset).await?;
     println!("insert: {:?}",affect);
+
+    beuser.id = affect as i32;
     
-    
+
+    let now = Local::now();
+    beuser.gmt_modified = now;
+    beuser.ref_count = Some(1234);
+
+    let affect = beuser.update(&pool,&offset).await?;
+    println!("update: {:?}",affect);
+
+
 
     Ok(())
 }
