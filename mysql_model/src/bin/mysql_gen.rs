@@ -21,6 +21,105 @@ pub struct ColumnDef {
     column_comment: String,
 }
 
+//-------------------------------------
+#[derive(Debug)]
+pub struct EntityAttr {
+    pub attr_name: String,
+    pub alias: Option<String>,
+    pub pk: bool,
+    pub ty: String,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct Entity {
+    pub table_name: String,
+    pub entity_name: String,
+    pub comment: Option<String>,
+
+    pub attrs: Vec<EntityAttr>,
+}
+
+//-------------------------------------
+fn uppercase_first_letter(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
+}
+
+/**
+根据表名，生成结构体名称
+去掉 "-" "_" 各节首字母大写，然后连在一起
+ */
+fn build_entity_name(table_name: &str) -> String {
+    let table_name = table_name.to_lowercase().replace("-", "_");
+    let s: Vec<String> = table_name.split("_").map(|x| uppercase_first_letter(&x.to_lowercase())).collect();
+    s.concat()
+}
+
+fn build_attr_name(column_name: &str) -> String {
+    column_name.to_lowercase()
+}
+
+fn build_type(column_type: &str) -> Result<String, sqlx::Error> {
+    // todo
+    let ty = match column_type {
+
+
+        _ => {
+            return Err(MySqxErr(format!("type: {} can't map",column_type)).into());
+        }
+    };
+    Ok(ty)
+}
+
+fn build_entity_from_columns(
+    table_name: String,
+    table_comment: String,
+    columns: Vec<ColumnDef>,
+) -> Result<Entity, sqlx::Error> {
+    let entity_name = build_entity_name(table_name.as_str());
+
+    let mut attrs = Vec::new();
+    for column in columns.iter() {
+        let attr_name = build_attr_name(column.column_name.as_str());
+        let alias = if attr_name.eq(column.column_name.as_str()) {
+            None
+        } else {
+            Some(column.column_name.clone())
+        };
+        let pk = column.column_key.eq("PRI");
+        let ty = build_type(column.data_type.as_str())?;
+        let comment = if column.column_comment.is_empty() {
+            None
+        } else {
+            Some(column.column_comment.clone())
+        };
+        let attr = EntityAttr {
+            attr_name,
+            alias,
+            pk,
+            ty,
+            comment,
+        };
+        attrs.push(attr);
+    }
+
+    let comment = if table_comment.is_empty() {
+        None
+    } else {
+        Some(table_comment.clone())
+    };
+    Ok(Entity {
+        table_name,
+        entity_name,
+        comment,
+        attrs,
+    })
+}
+
 async fn get_columns(
     pool: &Pool<MySql>,
     db_name: &str,
@@ -60,11 +159,9 @@ async fn get_table_names(pool: &Pool<MySql>, db_name: &str) -> sqlx::Result<Vec<
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    println!("aaa");
     let tz = "+08:00";
     let db_url = "mysql://root:cf123456@192.168.1.26:3306";
     let pool = mysql_util::init_pool(db_url, tz, 4, 1).await?;
-    println!("bbb");
     let offset = match mysql_util::parse_timezone(tz) {
         Ok(v) => v,
         Err(e) => {
@@ -74,16 +171,23 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let db_name = "cf_2.6";
     let tables = get_table_names(&pool, db_name).await?;
-    println!("{:#?}", tables);
+    println!("find {} tables",tables.len());
 
-    println!("++++++++++++++++++++++++");
+    let mut entity_list = Vec::new();
 
     for table in tables.iter() {
         let table_name = table.0.clone();
-        println!("-------------- {} ---------------", table_name);
-        let column_list = get_columns(&pool, db_name, table_name.as_str()).await?;
-        println!("{:?}", column_list);
+        let table_comment = table.1.clone();
+
+        let column_list = get_columns(&pool, db_name,
+                                      table_name.as_str()).await?;
+
+        let entity = build_entity_from_columns(table_name,table_comment,column_list)?;
+
+        entity_list.push(entity);
     }
+
+    println!("{:?}",entity_list);
 
     Ok(())
 }
