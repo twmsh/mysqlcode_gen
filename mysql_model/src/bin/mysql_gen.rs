@@ -88,9 +88,9 @@ fn uppercase_first_letter(s: &str) -> String {
 去掉 "-" "_" 各节首字母大写，然后连在一起
  */
 fn build_entity_name(table_name: &str) -> String {
-    let table_name = table_name.to_lowercase().replace("-", "_");
+    let table_name = table_name.to_lowercase().replace('-', "_");
     let s: Vec<String> = table_name
-        .split("_")
+        .split('_')
         .map(|x| uppercase_first_letter(&x.to_lowercase()))
         .collect();
     s.concat()
@@ -160,7 +160,7 @@ fn build_entity_from_columns(
     let comment = if table_comment.is_empty() {
         None
     } else {
-        Some(table_comment.clone())
+        Some(table_comment)
     };
     Ok(Entity {
         table_name,
