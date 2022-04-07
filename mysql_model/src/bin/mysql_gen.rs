@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use mysql_model::mysql_util;
 use mysql_model::mysql_util::MySqxErr;
 use sqlx::{query, query_as, FromRow, MySql, Pool, Row};
@@ -40,6 +41,42 @@ pub struct Entity {
     pub attrs: Vec<EntityAttr>,
 }
 
+impl Display for EntityAttr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(ref comment) = self.comment {
+            writeln!(f,r#"    /* {} */"#,comment);
+        }
+
+        if self.pk {
+            writeln!(f,"    #[pk]");
+        }
+        if let Some(ref alias) = self.alias {
+            writeln!(f,r#"    #[column = "{}"]"#,alias);
+        }
+        writeln!(f,"    pub {}: {},", self.attr_name,self.ty)
+    }
+}
+
+impl Display for Entity {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(ref comment) = self.comment {
+            writeln!(f,r#"/* {} */"#,comment);
+        }
+
+        writeln!(f,r#"#[derive(MysqlEntity,Debug,Clone)]"#);
+        writeln!(f,r#"#[table = "{}"]"#,self.table_name);
+
+        writeln!(f,r#"pub struct {} {{"#,self.entity_name);
+
+        for  attr in self.attrs.iter() {
+            writeln!(f,"{}",attr);
+        }
+
+        writeln!(f,r#"}}"#)
+    }
+}
+
+
 //-------------------------------------
 fn uppercase_first_letter(s: &str) -> String {
     let mut c = s.chars();
@@ -55,7 +92,10 @@ fn uppercase_first_letter(s: &str) -> String {
  */
 fn build_entity_name(table_name: &str) -> String {
     let table_name = table_name.to_lowercase().replace("-", "_");
-    let s: Vec<String> = table_name.split("_").map(|x| uppercase_first_letter(&x.to_lowercase())).collect();
+    let s: Vec<String> = table_name
+        .split("_")
+        .map(|x| uppercase_first_letter(&x.to_lowercase()))
+        .collect();
     s.concat()
 }
 
@@ -63,16 +103,30 @@ fn build_attr_name(column_name: &str) -> String {
     column_name.to_lowercase()
 }
 
-fn build_type(column_type: &str) -> Result<String, sqlx::Error> {
-    // todo
+fn build_type(column_type: &str, is_null:bool) -> Result<String, sqlx::Error> {
     let ty = match column_type {
-
-
+        "bigint"|"bigint unsigned" => "i64",
+        "int" | "integer" | "tinyint" | "smallint" | "mediumint" | "int unsigned"
+        | "integer unsigned" | "tinyint unsigned" | "smallint unsigned" | "mediumint unsigned"
+        | "bit" => "i32",
+        "float" | "double" | "decimal" => "f64",
+        "bool" => "bool",
+        "enum" | "set" | "varchar" | "char" | "tinytext" | "mediumtext" | "text" | "longtext" => {
+            "String"
+        }
+        "date" | "datetime" | "timestamp" | "time" => "DateTime<Local>",
+        "blob" | "tinyblob" | "mediumblob" | "longblob" | "varbinary" | "binary" => "Vec<u8>",
         _ => {
-            return Err(MySqxErr(format!("type: {} can't map",column_type)).into());
+            return Err(MySqxErr(format!("type: {} can't map", column_type)).into());
         }
     };
-    Ok(ty)
+    if is_null {
+        Ok(format!("Option<{}>",ty))
+    } else {
+        Ok(ty.to_string())
+    }
+
+
 }
 
 fn build_entity_from_columns(
@@ -91,7 +145,8 @@ fn build_entity_from_columns(
             Some(column.column_name.clone())
         };
         let pk = column.column_key.eq("PRI");
-        let ty = build_type(column.data_type.as_str())?;
+        let is_null = !column.is_nullable.eq("NO");
+        let ty = build_type(column.data_type.as_str(),is_null)?;
         let comment = if column.column_comment.is_empty() {
             None
         } else {
@@ -171,7 +226,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let db_name = "cf_2.6";
     let tables = get_table_names(&pool, db_name).await?;
-    println!("find {} tables",tables.len());
+    println!("find {} tables", tables.len());
 
     let mut entity_list = Vec::new();
 
@@ -179,15 +234,18 @@ async fn main() -> Result<(), sqlx::Error> {
         let table_name = table.0.clone();
         let table_comment = table.1.clone();
 
-        let column_list = get_columns(&pool, db_name,
-                                      table_name.as_str()).await?;
+        let column_list = get_columns(&pool, db_name, table_name.as_str()).await?;
 
-        let entity = build_entity_from_columns(table_name,table_comment,column_list)?;
+        let entity = build_entity_from_columns(table_name, table_comment, column_list)?;
 
         entity_list.push(entity);
     }
 
-    println!("{:?}",entity_list);
+    for entity in entity_list.iter() {
+        println!("{}", entity);
+
+    }
+
 
     Ok(())
 }

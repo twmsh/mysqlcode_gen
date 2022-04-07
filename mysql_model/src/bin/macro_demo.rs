@@ -4,12 +4,10 @@ use mysql_model::mysql_util::MySqxErr;
 
 use mysql_codegen::MysqlEntity;
 use mysql_model::mysql_util;
-use sqlx::{Arguments,FromRow};
+use sqlx::{Arguments, FromRow};
 
-
-#[derive(FromRow,Debug,Clone)]
-#[derive(MysqlEntity)]
-#[table="be_user"]
+#[derive(FromRow, Debug, Clone, MysqlEntity)]
+#[table = "be_user"]
 pub struct BeUser {
     #[pk]
     pub id: i32,
@@ -29,7 +27,6 @@ pub struct BeUser {
     pub memo: Option<String>,
     pub gmt_create: DateTime<Local>,
     pub gmt_modified: DateTime<Local>,
-
 }
 
 #[tokio::main]
@@ -46,11 +43,11 @@ async fn main() -> Result<(), sqlx::Error> {
         }
     };
 
-   let beuser = BeUser::load(1,&pool,&offset).await?;
-    println!("beuser: {:?}",beuser);
+    let beuser = BeUser::load(1, &pool, &offset).await?;
+    println!("beuser: {:?}", beuser);
 
-    let affect = BeUser::delete(10,&pool).await?;
-    println!("affect: {:?}",affect);
+    let affect = BeUser::delete(10, &pool).await?;
+    println!("affect: {:?}", affect);
 
     let now = Local::now();
     let login_name = now.timestamp().to_string();
@@ -61,7 +58,7 @@ async fn main() -> Result<(), sqlx::Error> {
         password: "password".to_string(),
         salt: "salt".to_string(),
         token: Some("token".to_string()),
-        phone:  Some("phone".to_string()),
+        phone: Some("phone".to_string()),
         email: Some("email".to_string()),
         service_flag: Some(20),
         ref_count: Some(10),
@@ -69,23 +66,20 @@ async fn main() -> Result<(), sqlx::Error> {
         token_expire: Some(now),
         memo: Some("memo".to_string()),
         gmt_create: now,
-        gmt_modified: now
+        gmt_modified: now,
     };
-    
-    let affect = beuser.insert(&pool,&offset).await?;
-    println!("insert: {:?}",affect);
+
+    let affect = beuser.insert(&pool, &offset).await?;
+    println!("insert: {:?}", affect);
 
     beuser.id = affect as i32;
-    
 
     let now = Local::now();
     beuser.gmt_modified = now;
     beuser.ref_count = Some(1234);
 
-    let affect = beuser.update(&pool,&offset).await?;
-    println!("update: {:?}",affect);
-
-
+    let affect = beuser.update(&pool, &offset).await?;
+    println!("update: {:?}", affect);
 
     Ok(())
 }
