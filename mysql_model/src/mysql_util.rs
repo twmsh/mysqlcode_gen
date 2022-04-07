@@ -90,7 +90,6 @@ pub async fn init_pool(
             Box::pin(async move {
                 let sql = format!("set time_zone = '{}'", tz_str);
                 conn.execute(sql.as_str()).await?;
-                println!("set end.");
                 Ok(())
             })
         })

@@ -1,7 +1,7 @@
-use std::fmt::{Display, Formatter};
 use mysql_model::mysql_util;
 use mysql_model::mysql_util::MySqxErr;
-use sqlx::{query, query_as, FromRow, MySql, Pool, Row};
+use sqlx::{query, FromRow, MySql, Pool, Row};
+use std::fmt::{Display, Formatter};
 use tokio_stream::StreamExt;
 
 #[derive(FromRow, Debug, Clone)]
@@ -44,38 +44,35 @@ pub struct Entity {
 impl Display for EntityAttr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if let Some(ref comment) = self.comment {
-            writeln!(f,r#"    /* {} */"#,comment);
+            let _ = writeln!(f, r#"    /* {} */"#, comment);
         }
 
         if self.pk {
-            writeln!(f,"    #[pk]");
+            let _ = writeln!(f, "    #[pk]");
         }
         if let Some(ref alias) = self.alias {
-            writeln!(f,r#"    #[column = "{}"]"#,alias);
+            let _ = writeln!(f, r#"    #[column = "{}"]"#, alias);
         }
-        writeln!(f,"    pub {}: {},", self.attr_name,self.ty)
+        writeln!(f, "    pub {}: {},", self.attr_name, self.ty)
     }
 }
 
 impl Display for Entity {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if let Some(ref comment) = self.comment {
-            writeln!(f,r#"/* {} */"#,comment);
+            let _ = writeln!(f, r#"/* {} */"#, comment);
         }
+        let _ = writeln!(f, r#"#[derive(MysqlEntity,Debug,Clone)]"#);
+        let _ = writeln!(f, r#"#[table = "{}"]"#, self.table_name);
 
-        writeln!(f,r#"#[derive(MysqlEntity,Debug,Clone)]"#);
-        writeln!(f,r#"#[table = "{}"]"#,self.table_name);
+        let _ = writeln!(f, r#"pub struct {} {{"#, self.entity_name);
 
-        writeln!(f,r#"pub struct {} {{"#,self.entity_name);
-
-        for  attr in self.attrs.iter() {
-            writeln!(f,"{}",attr);
+        for attr in self.attrs.iter() {
+            let _ = writeln!(f, "{}", attr);
         }
-
-        writeln!(f,r#"}}"#)
+        writeln!(f, r#"}}"#)
     }
 }
-
 
 //-------------------------------------
 fn uppercase_first_letter(s: &str) -> String {
@@ -103,9 +100,9 @@ fn build_attr_name(column_name: &str) -> String {
     column_name.to_lowercase()
 }
 
-fn build_type(column_type: &str, is_null:bool) -> Result<String, sqlx::Error> {
+fn build_type(column_type: &str, is_null: bool) -> Result<String, sqlx::Error> {
     let ty = match column_type {
-        "bigint"|"bigint unsigned" => "i64",
+        "bigint" | "bigint unsigned" => "i64",
         "int" | "integer" | "tinyint" | "smallint" | "mediumint" | "int unsigned"
         | "integer unsigned" | "tinyint unsigned" | "smallint unsigned" | "mediumint unsigned"
         | "bit" => "i32",
@@ -121,12 +118,10 @@ fn build_type(column_type: &str, is_null:bool) -> Result<String, sqlx::Error> {
         }
     };
     if is_null {
-        Ok(format!("Option<{}>",ty))
+        Ok(format!("Option<{}>", ty))
     } else {
         Ok(ty.to_string())
     }
-
-
 }
 
 fn build_entity_from_columns(
@@ -146,7 +141,7 @@ fn build_entity_from_columns(
         };
         let pk = column.column_key.eq("PRI");
         let is_null = !column.is_nullable.eq("NO");
-        let ty = build_type(column.data_type.as_str(),is_null)?;
+        let ty = build_type(column.data_type.as_str(), is_null)?;
         let comment = if column.column_comment.is_empty() {
             None
         } else {
@@ -217,7 +212,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let tz = "+08:00";
     let db_url = "mysql://root:cf123456@192.168.1.26:3306";
     let pool = mysql_util::init_pool(db_url, tz, 4, 1).await?;
-    let offset = match mysql_util::parse_timezone(tz) {
+    let _offset = match mysql_util::parse_timezone(tz) {
         Ok(v) => v,
         Err(e) => {
             return Err(MySqxErr(e).into());
@@ -226,7 +221,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let db_name = "cf_2.6";
     let tables = get_table_names(&pool, db_name).await?;
-    println!("find {} tables", tables.len());
+    println!("Find {} tables", tables.len());
 
     let mut entity_list = Vec::new();
 
@@ -243,9 +238,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     for entity in entity_list.iter() {
         println!("{}", entity);
-
     }
-
 
     Ok(())
 }
