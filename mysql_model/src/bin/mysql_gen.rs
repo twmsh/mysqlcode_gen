@@ -2,6 +2,8 @@ use mysql_model::mysql_util;
 use mysql_model::mysql_util::MySqxErr;
 use sqlx::{query, FromRow, MySql, Pool, Row};
 use std::fmt::{Display, Formatter};
+use std::io::Write;
+use std::{fs};
 use tokio_stream::StreamExt;
 
 use clap::{Arg, Command};
@@ -64,7 +66,7 @@ impl Display for Entity {
         if let Some(ref comment) = self.comment {
             let _ = writeln!(f, r#"/* {} */"#, comment);
         }
-        let _ = writeln!(f, r#"#[derive(MysqlEntity,Debug,Clone)]"#);
+        let _ = writeln!(f, r#"#[derive(MysqlEntity, Serialize, Deserialize,Debug,Clone)]"#);
         let _ = writeln!(f, r#"#[table = "{}"]"#, self.table_name);
 
         let _ = writeln!(f, r#"pub struct {} {{"#, self.entity_name);
@@ -212,13 +214,26 @@ async fn get_table_names(pool: &Pool<MySql>, db_name: &str) -> sqlx::Result<Vec<
 fn render_import() -> String {
     r#"use mysql_codegen::MysqlEntity;
 use mysql_model::mysql_util;
+use serde::{Deserialize, Serialize};
 use sqlx::{Arguments, FromRow};"#
         .to_string()
 }
 
+async fn write_to_file(entities: &Vec<Entity>, path: &str) -> std::io::Result<()> {
+    let mut f = fs::File::create(path)?;
+
+    let header = render_import();
+    f.write(format!("{}\n\n", header).as_bytes())?;
+
+    for entity in entities.iter() {
+        f.write(format!("{}\n", entity).as_bytes())?;
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-
     let matches = Command::new("mysql_gen")
         .version("1.0")
         .author("tom tong")
@@ -229,7 +244,7 @@ async fn main() -> Result<(), sqlx::Error> {
                 .long("db_url")
                 .required(true)
                 .takes_value(true)
-                .help("mysql url")
+                .help("mysql url"),
         )
         .arg(
             Arg::new("db_name")
@@ -237,13 +252,21 @@ async fn main() -> Result<(), sqlx::Error> {
                 .long("db_name")
                 .required(true)
                 .takes_value(true)
-                .help("database name")
+                .help("database name"),
+        )
+        .arg(
+            Arg::new("file_path")
+                .short('f')
+                .long("file_path")
+                .required(true)
+                .takes_value(true)
+                .help("rust file path"),
         )
         .get_matches();
 
     let db_url = matches.value_of("db_url").unwrap();
     let db_name = matches.value_of("db_name").unwrap();
-
+    let file_path = matches.value_of("file_path").unwrap();
 
     let tz = "+08:00";
     // let db_url = "mysql://root:cf123456@192.168.1.26:3306";
@@ -272,11 +295,8 @@ async fn main() -> Result<(), sqlx::Error> {
         entity_list.push(entity);
     }
 
-    for entity in entity_list.iter() {
-        println!("{}", entity);
-    }
-
-
+    let _ = write_to_file(&entity_list, file_path).await?;
+    println!("Write ok, {}", file_path);
 
     Ok(())
 }
