@@ -66,7 +66,9 @@ impl Display for Entity {
         if let Some(ref comment) = self.comment {
             let _ = writeln!(f, r#"/* {} */"#, comment);
         }
-        let _ = writeln!(f, r#"#[derive(MysqlEntity, Serialize, Deserialize,Debug,Clone)]"#);
+
+        let _ = writeln!(f, r#"#[derive(sqlx::FromRow)]"#);
+        let _ = writeln!(f, r#"#[derive(MysqlEntity, Serialize, Deserialize, Debug, Clone)]"#);
         let _ = writeln!(f, r#"#[table = "{}"]"#, self.table_name);
 
         let _ = writeln!(f, r#"pub struct {} {{"#, self.entity_name);
@@ -212,10 +214,12 @@ async fn get_table_names(pool: &Pool<MySql>, db_name: &str) -> sqlx::Result<Vec<
 }
 
 fn render_import() -> String {
-    r#"use mysql_codegen::MysqlEntity;
-use mysql_model::mysql_util;
+    r#"use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
-use sqlx::{Arguments, FromRow};"#
+use sqlx::{Arguments};
+use mysql_codegen::MysqlEntity;
+
+use crate::mysql_util;"#
         .to_string()
 }
 
