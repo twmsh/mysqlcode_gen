@@ -30,7 +30,6 @@ pub struct BeFunction {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 模块表，可以用来做后台导航菜单 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "be_module"]
@@ -63,7 +62,6 @@ pub struct BeModule {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 后台操作日志 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "be_oplog"]
@@ -99,7 +97,6 @@ pub struct BeOplog {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "be_role"]
 pub struct BeRole {
@@ -116,7 +113,6 @@ pub struct BeRole {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "be_role_function"]
 pub struct BeRoleFunction {
@@ -136,7 +132,6 @@ pub struct BeRoleFunction {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "be_user"]
 pub struct BeUser {
@@ -173,7 +168,6 @@ pub struct BeUser {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "be_user_role"]
 pub struct BeUserRole {
@@ -191,7 +185,6 @@ pub struct BeUserRole {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 存放监控报警规则 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_alarm_config"]
@@ -220,7 +213,6 @@ pub struct CfAlarmConfig {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 存放监控报警历史记录 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_alarm_history"]
@@ -246,7 +238,6 @@ pub struct CfAlarmHistory {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 监控摄像头表 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_camera"]
@@ -313,7 +304,6 @@ pub struct CfCamera {
 
     pub screen_no: i32,
 }
-
 /* 摄像头分组 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_camera_category"]
@@ -342,7 +332,6 @@ pub struct CfCameraCategory {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 摄像头采集参数配置 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_camera_config"]
@@ -368,7 +357,6 @@ pub struct CfCameraConfig {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_dictory"]
 pub struct CfDictory {
@@ -402,7 +390,6 @@ pub struct CfDictory {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 后台进程调用getunprocessedmatchedfacetrack，获得facetrack插入该表 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_facetrack_history"]
@@ -482,7 +469,6 @@ pub struct CfFacetrackHistory {
     /* 0：女，1：男 */
     pub gender: i32,
 }
-
 /* person对象所关联的facetrack */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_person_ft"]
@@ -502,7 +488,6 @@ pub struct CfPersonFt {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 监控目标人物表 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_poi"]
@@ -547,7 +532,6 @@ pub struct CfPoi {
 
     pub resident_flag: Option<i32>,
 }
-
 /* 监控目标分组 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_poigroup"]
@@ -570,7 +554,6 @@ pub struct CfPoigroup {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-
 /* 监控目标分组关联表，存放分组成员 */
 #[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]
 #[table = "cf_poigroup_map"]
@@ -590,4 +573,3 @@ pub struct CfPoigroupMap {
     /* 修改时间 */
     pub gmt_modified: DateTime<Local>,
 }
-

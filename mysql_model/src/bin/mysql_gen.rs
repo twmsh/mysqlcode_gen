@@ -78,7 +78,7 @@ impl Display for Entity {
         }
         let list_str = list.join("\n");
         let _ = write!(f, r#"{}"#, list_str);
-        writeln!(f, r#"}}"#)
+        write!(f, r#"}}"#)
     }
 }
 
