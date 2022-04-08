@@ -57,7 +57,7 @@ impl Display for EntityAttr {
         if let Some(ref alias) = self.alias {
             let _ = writeln!(f, r#"    #[column = "{}"]"#, alias);
         }
-        writeln!(f, "    pub {}: {},", self.attr_name, self.ty)
+        write!(f, "    pub {}: {},", self.attr_name, self.ty)
     }
 }
 
@@ -67,8 +67,7 @@ impl Display for Entity {
             let _ = writeln!(f, r#"/* {} */"#, comment);
         }
 
-        let _ = writeln!(f, r#"#[derive(sqlx::FromRow)]"#);
-        let _ = writeln!(f, r#"#[derive(MysqlEntity, Serialize, Deserialize, Debug, Clone)]"#);
+        let _ = writeln!(f, r#"#[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]"#);
         let _ = writeln!(f, r#"#[table = "{}"]"#, self.table_name);
 
         let _ = writeln!(f, r#"pub struct {} {{"#, self.entity_name);
@@ -215,9 +214,9 @@ async fn get_table_names(pool: &Pool<MySql>, db_name: &str) -> sqlx::Result<Vec<
 
 fn render_import() -> String {
     r#"use chrono::{DateTime, Local};
-use serde::{Deserialize, Serialize};
-use sqlx::{Arguments};
 use mysql_codegen::MysqlEntity;
+use serde::{Deserialize, Serialize};
+use sqlx::Arguments;
 
 use crate::mysql_util;"#
         .to_string()
