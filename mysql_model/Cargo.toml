@@ -17,8 +17,9 @@ tokio-stream = "0.1.8"
 mysql = "22"
 
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "mysql", "chrono"] }
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"]}
 
+clap = "3.1.8"
 
 [target.'cfg(not(any(target_os = "windows", target_os = "macos", target_os = "ios")))'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }

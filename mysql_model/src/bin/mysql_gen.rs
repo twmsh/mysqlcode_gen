@@ -4,6 +4,8 @@ use sqlx::{query, FromRow, MySql, Pool, Row};
 use std::fmt::{Display, Formatter};
 use tokio_stream::StreamExt;
 
+use clap::{Arg, Command};
+
 #[derive(FromRow, Debug, Clone)]
 pub struct ColumnDef {
     #[sqlx(rename = "COLUMN_NAME")]
@@ -216,8 +218,35 @@ use sqlx::{Arguments, FromRow};"#
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+
+    let matches = Command::new("mysql_gen")
+        .version("1.0")
+        .author("tom tong")
+        .about("generate rust entity code from mysql db")
+        .arg(
+            Arg::new("db_url")
+                .short('u')
+                .long("db_url")
+                .required(true)
+                .takes_value(true)
+                .help("mysql url")
+        )
+        .arg(
+            Arg::new("db_name")
+                .short('d')
+                .long("db_name")
+                .required(true)
+                .takes_value(true)
+                .help("database name")
+        )
+        .get_matches();
+
+    let db_url = matches.value_of("db_url").unwrap();
+    let db_name = matches.value_of("db_name").unwrap();
+
+
     let tz = "+08:00";
-    let db_url = "mysql://root:cf123456@192.168.1.26:3306";
+    // let db_url = "mysql://root:cf123456@192.168.1.26:3306";
     let pool = mysql_util::init_pool(db_url, tz, 4, 1).await?;
     let _offset = match mysql_util::parse_timezone(tz) {
         Ok(v) => v,
@@ -226,11 +255,9 @@ async fn main() -> Result<(), sqlx::Error> {
         }
     };
 
-    let db_name = "cf_2.6";
+    // let db_name = "cf_2.6";
     let tables = get_table_names(&pool, db_name).await?;
     println!("Find {} tables", tables.len());
-
-    println!("{}",render_import());
 
     let mut entity_list = Vec::new();
 
