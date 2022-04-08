@@ -69,12 +69,15 @@ impl Display for Entity {
 
         let _ = writeln!(f, r#"#[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]"#);
         let _ = writeln!(f, r#"#[table = "{}"]"#, self.table_name);
-
         let _ = writeln!(f, r#"pub struct {} {{"#, self.entity_name);
 
+        let mut list = Vec::new();
+
         for attr in self.attrs.iter() {
-            let _ = writeln!(f, "{}", attr);
+            list.push(format!("{}\n",attr));
         }
+        let list_str = list.join("\n");
+        let _ = write!(f, r#"{}"#, list_str);
         writeln!(f, r#"}}"#)
     }
 }
