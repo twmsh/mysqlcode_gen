@@ -16,7 +16,7 @@ tokio-stream = "0.1.8"
 
 mysql = "22"
 
-sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "mysql", "chrono"] }
+sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "mysql", "sqlite", "chrono"] }
 chrono = { version = "0.4", features = ["serde"]}
 
 clap = "3.1.8"
