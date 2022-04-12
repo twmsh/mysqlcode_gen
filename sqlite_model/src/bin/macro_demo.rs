@@ -7,6 +7,7 @@ use sqlite_codegen::SqliteEntity;
 use sqlx::{Arguments, FromRow};
 use sqlite_model::sqlite_util;
 use sqlite_model::cf_model::BeUser;
+use sqlite_model::sqlite_util::MySqxErr;
 
 //
 // #[tokio::main]
@@ -66,10 +67,21 @@ use sqlite_model::cf_model::BeUser;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+
+
+    println!("aaa");
+    let tz = "+08:00";
     let db_url = r#"sqlite:C:\Users\tom\develop\RustProjects\mysql_codegen\doc\a.db"#;
     let pool = sqlite_util::init_sqlite_pool(db_url,4,2).await?;
 
-    let beuser = BeUser::load(1, &pool).await?;
+    let offset = match sqlite_util::parse_timezone(tz) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(MySqxErr(e).into());
+        }
+    };
+
+    let beuser = BeUser::load(1, &pool, &offset).await?;
     println!("beuser: {:?}", beuser);
 
     let affect = BeUser::delete(10, &pool).await?;
@@ -95,7 +107,7 @@ async fn main() -> Result<(), sqlx::Error> {
         gmt_modified: now,
     };
 
-    let affect = beuser.insert(&pool).await?;
+    let affect = beuser.insert(&pool, &offset).await?;
     println!("insert: {:?}", affect);
 
     beuser.id = affect as i64;
@@ -104,9 +116,8 @@ async fn main() -> Result<(), sqlx::Error> {
     beuser.gmt_modified = now;
     beuser.ref_count = Some(1234);
 
-    let affect = beuser.update(&pool).await?;
+    let affect = beuser.update(&pool, &offset).await?;
     println!("update: {:?}", affect);
-
 
     Ok(())
 }

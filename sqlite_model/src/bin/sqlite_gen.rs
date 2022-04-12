@@ -226,7 +226,9 @@ fn render_import() -> String {
     r#"use chrono::{DateTime, Local};
 use sqlite_codegen::SqliteEntity;
 use serde::{Deserialize, Serialize};
-use sqlx::Arguments;"#
+use sqlx::Arguments;
+
+use crate::sqlite_util;"#
         .to_string()
 }
 

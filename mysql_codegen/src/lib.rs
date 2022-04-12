@@ -467,7 +467,7 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
             #(#mysql_arguments_piece);*
 
             let rst = sqlx::query_with(sql, args).execute(pool).await?;
-             Ok(rst.last_insert_id())
+            Ok(rst.last_insert_id())
         }
 
 

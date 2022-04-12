@@ -3,14 +3,14 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use syn::spanned::Spanned;
 use syn::{
-     Data, DataStruct, DeriveInput, Field, Fields, FieldsNamed,
-     Lit, LitStr, Meta, MetaNameValue
+    AngleBracketedGenericArguments, Data, DataStruct, DeriveInput, Field, Fields, FieldsNamed,
+    GenericArgument, Lit, LitStr, Meta, MetaNameValue, PathArguments, Result, Type, TypePath,
 };
 
 
 //--------------------------------------
 
-// #[derive(SqliteEntity)]
+// #[derive(MysqlEntity)]
 // #[derive(Debug)]
 // #[table="cf_source"]
 // pub struct CfSource {
@@ -28,9 +28,9 @@ fn find_table_name_from_deriveinput(st: &DeriveInput) -> syn::Result<Option<Stri
     for attr in st.attrs.iter() {
         if attr.path.is_ident("table") {
             if let Meta::NameValue(MetaNameValue {
-                lit: Lit::Str(list_str),
-                ..
-            }) = attr.parse_meta()?
+                                       lit: Lit::Str(list_str),
+                                       ..
+                                   }) = attr.parse_meta()?
             {
                 return Ok(Some(list_str.value()));
             }
@@ -43,9 +43,9 @@ fn find_table_name_from_deriveinput(st: &DeriveInput) -> syn::Result<Option<Stri
 fn get_non_pk_fields(st: &DeriveInput) -> syn::Result<Vec<&Field>> {
     let fields = match st.data {
         Data::Struct(DataStruct {
-            fields: Fields::Named(FieldsNamed { ref named, .. }),
-            ..
-        }) => named,
+                         fields: Fields::Named(FieldsNamed { ref named, .. }),
+                         ..
+                     }) => named,
         _ => {
             return Ok(vec![]);
         }
@@ -65,13 +65,12 @@ fn get_non_pk_fields(st: &DeriveInput) -> syn::Result<Vec<&Field>> {
     Ok(normal_fields)
 }
 
-/*
 fn get_all_fields(st: &DeriveInput) -> syn::Result<Vec<&Field>> {
     let fields = match st.data {
         Data::Struct(DataStruct {
-            fields: Fields::Named(FieldsNamed { ref named, .. }),
-            ..
-        }) => named,
+                         fields: Fields::Named(FieldsNamed { ref named, .. }),
+                         ..
+                     }) => named,
         _ => {
             return Ok(vec![]);
         }
@@ -79,14 +78,13 @@ fn get_all_fields(st: &DeriveInput) -> syn::Result<Vec<&Field>> {
 
     Ok(fields.iter().collect())
 }
-*/
 
 fn find_pk_filed(st: &DeriveInput) -> syn::Result<Option<&Field>> {
     let fields = match st.data {
         Data::Struct(DataStruct {
-            fields: Fields::Named(FieldsNamed { ref named, .. }),
-            ..
-        }) => named,
+                         fields: Fields::Named(FieldsNamed { ref named, .. }),
+                         ..
+                     }) => named,
         _ => {
             return Ok(None);
         }
@@ -109,9 +107,9 @@ fn get_column_name(field: &Field) -> syn::Result<Option<String>> {
     for attr in field.attrs.iter() {
         if attr.path.is_ident("column") {
             if let Meta::NameValue(MetaNameValue {
-                lit: Lit::Str(list_str),
-                ..
-            }) = attr.parse_meta()?
+                                       lit: Lit::Str(list_str),
+                                       ..
+                                   }) = attr.parse_meta()?
             {
                 return Ok(Some(list_str.value()));
             }
@@ -156,7 +154,7 @@ fn find_datetime_fields(st: &syn::DeriveInput) -> syn::Result<Vec<&Ident>> {
 
 // 生成删除函数
 // 获取表名，pk字段名词，类型
-//     pub async fn delete_by_id(pool: &Pool<Sqlite>, id: i64) -> Result<u64, sqlx::Error> {
+//     pub async fn delete_by_id(pool: &Pool<MySql>, id: i64) -> Result<u64, sqlx::Error> {
 //         let sql = "delete from be_user where id = ?";
 //         let rst = sqlx::query(sql).bind(id).execute(pool).await?;
 //         Ok(rst.rows_affected())
@@ -199,7 +197,7 @@ fn generate_delete_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 }
 
 // pub async fn get_by_id(
-//         pool: &Pool<Sqlite>,
+//         pool: &Pool<MySql>,
 //         tz: &FixedOffset,
 //         id: i64,
 //     ) -> Result<Option<Self>, sqlx::Error> {
@@ -210,16 +208,15 @@ fn generate_delete_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 //             .await?;
 //
 //         if let Some(ref mut v) = rst {
-//             Sqlite_util::fix_read_dt_option(&mut v.last_login, tz);
-//             Sqlite_util::fix_read_dt_option(&mut v.token_expire, tz);
-//             Sqlite_util::fix_read_dt(&mut v.gmt_create, tz);
-//             Sqlite_util::fix_read_dt(&mut v.gmt_modified, tz);
+//             sqlite_util::fix_read_dt_option(&mut v.last_login, tz);
+//             sqlite_util::fix_read_dt_option(&mut v.token_expire, tz);
+//             sqlite_util::fix_read_dt(&mut v.gmt_create, tz);
+//             sqlite_util::fix_read_dt(&mut v.gmt_modified, tz);
 //         }
 //
 //         Ok(rst)
 //     }
 
-/*
 fn generate_select_date_piece(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
     let fields = get_all_fields(st)?;
     let mut piece_list = Vec::new();
@@ -229,12 +226,12 @@ fn generate_select_date_piece(st: &syn::DeriveInput) -> syn::Result<TokenStream2
         match is_datetime_field(field)? {
             1 => {
                 piece_list.push(quote::quote! {
-                    Sqlite_util::fix_read_dt(&mut v.#ident, tz);
+                    sqlite_util::fix_read_dt(&mut v.#ident, tz);
                 });
             }
             2 => {
                 piece_list.push(quote::quote! {
-                    Sqlite_util::fix_read_dt_option(&mut v.#ident, tz);
+                    sqlite_util::fix_read_dt_option(&mut v.#ident, tz);
                 });
             }
             _ => {}
@@ -251,7 +248,6 @@ fn generate_select_date_piece(st: &syn::DeriveInput) -> syn::Result<TokenStream2
         })
     }
 }
-*/
 
 fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> {
     let table = match find_table_name_from_deriveinput(st)? {
@@ -283,12 +279,13 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
         let sql = #sql_lit;
     };
 
-    // let date_piece = generate_select_date_piece(st)?;
+    let date_piece = generate_select_date_piece(st)?;
 
     let piece = quote::quote! {
         pub async fn load(
             #pk_ident: #ty,
-            pool: &sqlx::Pool<sqlx::Sqlite>
+            pool: &sqlx::Pool<sqlx::Sqlite>,
+            tz: &chrono::FixedOffset
         ) -> std::result::Result<Option<Self>, sqlx::Error> {
             #sql_piece
             let mut rst = sqlx::query_as::<_, #ident>(sql)
@@ -296,7 +293,7 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
                 .fetch_optional(pool)
                 .await?;
 
-
+            #date_piece
             Ok(rst)
         }
     };
@@ -306,8 +303,6 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 // 判断是否是 DateTime或 Option<DateTime>
 // 1: DateTime 2:Option<DateTime> 0: non Datetime
 // 例如：std::option::Option<chrono::DateTime<chrono::Local>>,
-
-/*
 fn is_datetime_field(field: &Field) -> Result<u8> {
     let ty = match field.ty {
         Type::Path(ref v) => v,
@@ -330,7 +325,7 @@ fn is_datetime_field(field: &Field) -> Result<u8> {
         Some(v) => v,
     };
     if let PathArguments::AngleBracketed(AngleBracketedGenericArguments { ref args, .. }) =
-        option_seg.arguments
+    option_seg.arguments
     {
         // 查找有没有 DateTime
         if let Some(GenericArgument::Type(Type::Path(TypePath { path, .. }))) = args.first() {
@@ -342,9 +337,8 @@ fn is_datetime_field(field: &Field) -> Result<u8> {
 
     Ok(0)
 }
-*/
 
-// 生成 SqliteArguments
+// 生成 MySqlArguments
 /*
 fn generate_insert_arguments(st: &syn::DeriveInput) -> Result<Vec<TokenStream2>> {
     let pieces = Vec::new();
@@ -387,9 +381,9 @@ fn generate_insert_arguments(st: &syn::DeriveInput) -> Result<Vec<TokenStream2>>
 }
 */
 
-// pub async fn insert(&self, pool: &Pool<Sqlite>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
+// pub async fn insert(&self, pool: &Pool<MySql>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
 //         let sql = "insert into be_user(name,login_name,password,salt, token,phone,email,service_flag,ref_count,last_login,token_expire,memo,gmt_create,gmt_modified) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-//         let mut args = SqliteArguments::default();
+//         let mut args = MySqlArguments::default();
 //
 //         args.add(self.name.clone());
 //         args.add(self.login_name.clone());
@@ -402,11 +396,11 @@ fn generate_insert_arguments(st: &syn::DeriveInput) -> Result<Vec<TokenStream2>>
 //         args.add(self.service_flag.clone());
 //         args.add(self.ref_count.clone());
 //
-//         args.add(Sqlite_util::fix_write_dt_option(&self.last_login, tz));
-//         args.add(Sqlite_util::fix_write_dt_option(&self.token_expire, tz));
+//         args.add(sqlite_util::fix_write_dt_option(&self.last_login, tz));
+//         args.add(sqlite_util::fix_write_dt_option(&self.token_expire, tz));
 //         args.add(self.memo.clone());
-//         args.add(Sqlite_util::fix_write_dt(&self.gmt_create, tz));
-//         args.add(Sqlite_util::fix_write_dt(&self.gmt_modified, tz));
+//         args.add(sqlite_util::fix_write_dt(&self.gmt_create, tz));
+//         args.add(sqlite_util::fix_write_dt(&self.gmt_modified, tz));
 //
 //         let rst = sqlx::query_with(sql, args).execute(pool).await?;
 //         Ok(rst.last_insert_id())
@@ -440,26 +434,40 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     );
     let sql_lit = LitStr::new(sql_str.as_str(), st.span());
 
-    let mut sqlite_arguments_piece = Vec::new();
+    let mut mysql_arguments_piece = Vec::new();
     for field in nonpk_fields.iter() {
         let ident = &field.ident.clone().unwrap();
-        let argument_piece =
+        let argument_piece = match is_datetime_field(field)? {
+            1 => {
+                quote::quote! {
+                    args.add(sqlite_util::fix_write_dt(&self.#ident, tz));
+                }
+            }
+            2 => {
+                quote::quote! {
+                    args.add(sqlite_util::fix_write_dt_option(&self.#ident, tz));
+                }
+            }
+            _ => {
                 quote::quote! {
                     args.add(self.#ident.clone());
-                };
-        sqlite_arguments_piece.push(argument_piece);
+                }
+            }
+        };
+        mysql_arguments_piece.push(argument_piece);
     }
 
     let piece = quote::quote! {
 
-         pub async fn insert(&self, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<u64, sqlx::Error> {
+         pub async fn insert(&self, pool: &sqlx::Pool<sqlx::Sqlite>,
+                        tz: &chrono::FixedOffset,) -> Result<u64, sqlx::Error> {
             let sql = #sql_lit;
             let mut args = sqlx::sqlite::SqliteArguments::default();
 
-            #(#sqlite_arguments_piece);*
+            #(#mysql_arguments_piece);*
 
             let rst = sqlx::query_with(sql, args).execute(pool).await?;
-             Ok(rst.last_insert_rowid() as u64)
+            Ok(rst.last_insert_rowid() as u64)
         }
 
 
@@ -467,9 +475,9 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     Ok(piece)
 }
 
-// pub async fn update(&self, pool: &Pool<Sqlite>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
+// pub async fn update(&self, pool: &Pool<MySql>, tz: &FixedOffset) -> Result<u64, sqlx::Error> {
 //         let sql = "update be_user set name = ?, ... ,gmt_modified =? where id = ?";
-//         let mut args = SqliteArguments::default();
+//         let mut args = MySqlArguments::default();
 //
 //         args.add(self.name.clone());
 //         args.add(self.login_name.clone());
@@ -482,11 +490,11 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 //         args.add(self.service_flag.clone());
 //         args.add(self.ref_count.clone());
 //
-//         args.add(Sqlite_util::fix_write_dt_option(&self.last_login, tz));
-//         args.add(Sqlite_util::fix_write_dt_option(&self.token_expire, tz));
+//         args.add(sqlite_util::fix_write_dt_option(&self.last_login, tz));
+//         args.add(sqlite_util::fix_write_dt_option(&self.token_expire, tz));
 //         args.add(self.memo.clone());
-//         args.add(Sqlite_util::fix_write_dt(&self.gmt_create, tz));
-//         args.add(Sqlite_util::fix_write_dt(&self.gmt_modified, tz));
+//         args.add(sqlite_util::fix_write_dt(&self.gmt_create, tz));
+//         args.add(sqlite_util::fix_write_dt(&self.gmt_modified, tz));
 //
 //         let rst = sqlx::query_with(sql, args).execute(pool).await?;
 //         Ok(rst.last_insert_id())
@@ -524,7 +532,7 @@ fn generate_update_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     }
 
     let columns_str = nonpk_columns.iter().map(|f| format!("{} = ?",f))
-                            .collect::<Vec<String>>().join(",");
+        .collect::<Vec<String>>().join(",");
     let mut question_marks = "?,".repeat(nonpk_columns.len());
     let _ = question_marks.split_off(question_marks.len() - 1);
     let sql_str = format!(
@@ -533,26 +541,40 @@ fn generate_update_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     );
     let sql_lit = LitStr::new(sql_str.as_str(), st.span());
 
-    let mut sqlite_arguments_piece = Vec::new();
+    let mut mysql_arguments_piece = Vec::new();
     for field in nonpk_fields.iter() {
         let ident = &field.ident.clone().unwrap();
-        let argument_piece =
+        let argument_piece = match is_datetime_field(field)? {
+            1 => {
+                quote::quote! {
+                    args.add(sqlite_util::fix_write_dt(&self.#ident, tz));
+                }
+            }
+            2 => {
+                quote::quote! {
+                    args.add(sqlite_util::fix_write_dt_option(&self.#ident, tz));
+                }
+            }
+            _ => {
                 quote::quote! {
                     args.add(self.#ident.clone());
-                };
-        sqlite_arguments_piece.push(argument_piece);
+                }
+            }
+        };
+        mysql_arguments_piece.push(argument_piece);
     }
-    sqlite_arguments_piece.push(quote::quote! {
+    mysql_arguments_piece.push(quote::quote! {
         args.add(self.#pk_ident.clone());
     });
 
     let piece = quote::quote! {
 
-         pub async fn update(&self, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<u64, sqlx::Error> {
+         pub async fn update(&self, pool: &sqlx::Pool<sqlx::Sqlite>,
+                        tz: &chrono::FixedOffset,) -> Result<u64, sqlx::Error> {
             let sql = #sql_lit;
             let mut args = sqlx::sqlite::SqliteArguments::default();
 
-            #(#sqlite_arguments_piece);*
+            #(#mysql_arguments_piece);*
 
             let rst = sqlx::query_with(sql, args).execute(pool).await?;
              Ok(rst.rows_affected())
