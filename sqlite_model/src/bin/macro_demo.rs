@@ -1,33 +1,33 @@
 use chrono::{DateTime, Local};
-// use serde::{Serialize,Deserialize};
+use serde::{Serialize,Deserialize};
 use sqlite_model::sqlite_util::{self,MySqxErr};
 
 use sqlite_codegen::SqliteEntity;
 
 use sqlx::{Arguments, FromRow};
-//
-// #[derive(FromRow, Debug, Clone, SqliteEntity)]
-// #[table = "be_user"]
-// pub struct BeUser {
-//     #[pk]
-//     pub id: i32,
-//     pub name: Option<String>,
-//     pub login_name: String,
-//     pub password: String,
-//     pub salt: String,
-//
-//     pub token: Option<String>,
-//     pub phone: Option<String>,
-//     pub email: Option<String>,
-//     pub service_flag: Option<i16>,
-//     pub ref_count: Option<i16>,
-//
-//     pub last_login: Option<DateTime<Local>>,
-//     pub token_expire: Option<DateTime<Local>>,
-//     pub memo: Option<String>,
-//     pub gmt_create: DateTime<Local>,
-//     pub gmt_modified: DateTime<Local>,
-// }
+
+#[derive(FromRow, Debug, Clone, SqliteEntity)]
+#[table = "be_user"]
+pub struct BeUser {
+    #[pk]
+    pub id: i32,
+    pub name: Option<String>,
+    pub login_name: String,
+    pub password: String,
+    pub salt: String,
+
+    pub token: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub service_flag: Option<i16>,
+    pub ref_count: Option<i16>,
+
+    pub last_login: Option<DateTime<Local>>,
+    pub token_expire: Option<DateTime<Local>>,
+    pub memo: Option<String>,
+    pub gmt_create: DateTime<Local>,
+    pub gmt_modified: DateTime<Local>,
+}
 //
 // #[tokio::main]
 // async fn main() -> Result<(), sqlx::Error> {

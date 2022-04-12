@@ -288,8 +288,7 @@ fn generate_select_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
     let piece = quote::quote! {
         pub async fn load(
             #pk_ident: #ty,
-            pool: &sqlx::Pool<sqlx::Sqlite>,
-            tz: &chrono::FixedOffset
+            pool: &sqlx::Pool<sqlx::Sqlite>
         ) -> std::result::Result<Option<Self>, sqlx::Error> {
             #sql_piece
             let mut rst = sqlx::query_as::<_, #ident>(sql)
@@ -453,15 +452,14 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 
     let piece = quote::quote! {
 
-         pub async fn insert(&self, pool: &sqlx::Pool<sqlx::Sqlite>,
-                        tz: &chrono::FixedOffset,) -> Result<u64, sqlx::Error> {
+         pub async fn insert(&self, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<u64, sqlx::Error> {
             let sql = #sql_lit;
             let mut args = sqlx::Sqlite::SqliteArguments::default();
 
             #(#sqlite_arguments_piece);*
 
             let rst = sqlx::query_with(sql, args).execute(pool).await?;
-             Ok(rst.last_insert_id())
+             Ok(rst.last_insert_rowid() as u64)
         }
 
 
@@ -550,8 +548,7 @@ fn generate_update_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 
     let piece = quote::quote! {
 
-         pub async fn update(&self, pool: &sqlx::Pool<sqlx::Sqlite>,
-                        tz: &chrono::FixedOffset,) -> Result<u64, sqlx::Error> {
+         pub async fn update(&self, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<u64, sqlx::Error> {
             let sql = #sql_lit;
             let mut args = sqlx::Sqlite::SqliteArguments::default();
 
