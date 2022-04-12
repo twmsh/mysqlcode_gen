@@ -70,7 +70,7 @@ impl Display for Entity {
 
         let _ = writeln!(
             f,
-            r#"#[derive(sqlx::FromRow, MysqlEntity, Serialize, Deserialize, Debug, Clone)]"#
+            r#"#[derive(sqlx::FromRow, SqliteEntity, Serialize, Deserialize, Debug, Clone)]"#
         );
         let _ = writeln!(f, r#"#[table = "{}"]"#, self.table_name);
         let _ = writeln!(f, r#"pub struct {} {{"#, self.entity_name);
@@ -87,6 +87,16 @@ impl Display for Entity {
 }
 
 //-------------------------------------
+pub fn trim_colum_type(col_type: &str) -> String {
+    // 小写，并去掉 (及后面
+    let s = col_type.to_lowercase();
+    if let Some(p) = s.find("(") {
+        s[..p].to_string()
+    } else {
+        s
+    }
+}
+
 fn uppercase_first_letter(s: &str) -> String {
     let mut c = s.chars();
     match c.next() {
@@ -113,7 +123,9 @@ fn build_attr_name(column_name: &str) -> String {
 }
 
 fn build_type(column_type: &str, is_null: bool) -> Result<String, sqlx::Error> {
-    let ty = match column_type {
+    let column_ty = trim_colum_type(column_type).to_lowercase();
+
+    let ty = match column_ty.as_str() {
         "integer" | "bigint" | "unsigned big int" => "i64",
         "int" | "tinyint" | "smallint" | "mediumint" | "int2" | "int8" => "i32",
         "float" | "real" | "double" | "double precision" => "f64",
@@ -180,10 +192,10 @@ fn build_entity_from_columns(
 }
 
 async fn get_columns(pool: &Pool<Sqlite>, table_name: &str) -> sqlx::Result<Vec<ColumnDef>> {
-    let sql = "pragma table_info(?)";
+    let sql = format!("pragma table_info('{}')",table_name);
 
-    let mut rows = sqlx::query_as::<_, ColumnDef>(sql)
-        .bind(table_name)
+    let mut rows = sqlx::query_as::<_, ColumnDef>(&sql)
+        // .bind(table_name)
         .fetch(pool);
     let mut list = Vec::new();
 
@@ -195,13 +207,14 @@ async fn get_columns(pool: &Pool<Sqlite>, table_name: &str) -> sqlx::Result<Vec<
 
 //
 async fn get_table_names(pool: &Pool<Sqlite>) -> sqlx::Result<Vec<String>> {
-    let sql = "select tbl_name from sqlite_master  WHERE type = ? ";
+    let sql = "select tbl_name from sqlite_master  WHERE type = ? and tbl_name != ? ";
 
-    let mut rows = query(sql).bind("table").fetch(pool);
+    let mut rows = query(sql).bind("table")
+        .bind("sqlite_sequence").fetch(pool);
 
     let mut list = Vec::new();
     while let Some(row) = rows.try_next().await? {
-        let table_name = row.try_get("table_name")?;
+        let table_name = row.try_get("tbl_name")?;
 
         list.push(table_name);
     }
@@ -211,11 +224,9 @@ async fn get_table_names(pool: &Pool<Sqlite>) -> sqlx::Result<Vec<String>> {
 
 fn render_import() -> String {
     r#"use chrono::{DateTime, Local};
-use mysql_codegen::MysqlEntity;
+use sqlite_codegen::SqliteEntity;
 use serde::{Deserialize, Serialize};
-use sqlx::Arguments;
-
-use crate::mysql_util;"#
+use sqlx::Arguments;"#
         .to_string()
 }
 
@@ -234,17 +245,17 @@ async fn write_to_file(entities: &Vec<Entity>, path: &str) -> std::io::Result<()
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    let matches = Command::new("mysql_gen")
+    let matches = Command::new("sqlite_gen")
         .version("1.0")
         .author("tom tong")
-        .about("generate rust entity code from mysql db")
+        .about("generate rust entity code from sqlite db")
         .arg(
             Arg::new("db_url")
                 .short('u')
                 .long("db_url")
                 .required(true)
                 .takes_value(true)
-                .help("mysql url"),
+                .help("sqlite url"),
         )
         .arg(
             Arg::new("file_path")
@@ -260,7 +271,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let file_path = matches.value_of("file_path").unwrap();
 
-    // let db_url = "mysql://root:cf123456@192.168.1.26:3306";
+    // let db_url = "sqlite:todos.db";
     let pool = sqlite_util::init_pool(db_url,  4, 1).await?;
 
     // let db_name = "cf_2.6";
