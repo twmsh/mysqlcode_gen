@@ -98,7 +98,7 @@ async fn main() -> Result<(), sqlx::Error> {
         password: "password".to_string(),
         salt: "salt".to_string(),
         token: Some("token".to_string()),
-        phone: Some("phone".to_string()),
+        phone: Some("中文".to_string()),
         email: Some("email".to_string()),
         service_flag: Some(20),
         ref_count: Some(10),
