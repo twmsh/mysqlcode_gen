@@ -1,3 +1,3 @@
 [workspace]
 
-members=["mysql_codegen","mysql_model"]
+members=["mysql_codegen","sqlite_codegen","mysql_model","sqlite_model"]

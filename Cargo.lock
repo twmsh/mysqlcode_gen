@@ -1760,6 +1760,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "sqlite_codegen"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "sqlite_model"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "openssl",
+ "serde",
+ "serde_json",
+ "sqlite_codegen",
+ "sqlx",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "sqlx"
 version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"

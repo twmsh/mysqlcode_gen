@@ -1,6 +1,6 @@
-use mysql_model::mysql_util;
-use mysql_model::mysql_util::MySqxErr;
-use sqlx::{query, FromRow, MySql, Pool, Row};
+use sqlite_model::sqlite_util::{self,MySqxErr};
+
+use sqlx::{query, FromRow, Sqlite, Pool, Row};
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::io::Write;
@@ -10,7 +10,8 @@ use clap::{Arg, Command};
 
 #[derive(FromRow, Debug, Clone)]
 pub struct ColumnDef {
-    cid: i32,
+    #[sqlx(rename = "cid")]
+    _cid: i32,
 
     name: String,
 
@@ -21,7 +22,7 @@ pub struct ColumnDef {
     not_null: i32,
 
     #[sqlx(rename = "dflt_value")]
-    default_value: Option<String>,
+    _default_value: Option<String>,
 
     pk: i32,
 }
@@ -113,17 +114,14 @@ fn build_attr_name(column_name: &str) -> String {
 
 fn build_type(column_type: &str, is_null: bool) -> Result<String, sqlx::Error> {
     let ty = match column_type {
-        "bigint" | "bigint unsigned" => "i64",
-        "int" | "integer" | "tinyint" | "smallint" | "mediumint" | "int unsigned"
-        | "integer unsigned" | "tinyint unsigned" | "smallint unsigned" | "mediumint unsigned"
-        | "bit" => "i32",
-        "float" | "double" | "decimal" => "f64",
-        "bool" => "bool",
-        "enum" | "set" | "varchar" | "char" | "tinytext" | "mediumtext" | "text" | "longtext" => {
-            "String"
-        }
+        "integer" | "bigint" | "unsigned big int" => "i64",
+        "int" | "tinyint" | "smallint" | "mediumint" | "int2" | "int8" => "i32",
+        "float" | "real" | "double" | "double precision" => "f64",
+        "varchar" | "char" | "varying character" | "nchar" | "native character" | "nvarchar"
+        | "text" | "clob" => "String",
+
         "date" | "datetime" | "timestamp" | "time" => "DateTime<Local>",
-        "blob" | "tinyblob" | "mediumblob" | "longblob" | "varbinary" | "binary" => "Vec<u8>",
+        "blob" => "Vec<u8>",
         _ => {
             return Err(MySqxErr(format!("type: {} can't map", column_type)).into());
         }
@@ -156,7 +154,7 @@ fn build_entity_from_columns(
             is_null = false;
         }
 
-        let ty = build_type(column.data_type.as_str(), is_null)?;
+        let ty = build_type(column.ty.as_str(), is_null)?;
         let comment = None;
         let attr = EntityAttr {
             attr_name,
@@ -181,7 +179,7 @@ fn build_entity_from_columns(
     })
 }
 
-async fn get_columns(pool: &Pool<MySql>, table_name: &str) -> sqlx::Result<Vec<ColumnDef>> {
+async fn get_columns(pool: &Pool<Sqlite>, table_name: &str) -> sqlx::Result<Vec<ColumnDef>> {
     let sql = "pragma table_info(?)";
 
     let mut rows = sqlx::query_as::<_, ColumnDef>(sql)
@@ -196,7 +194,7 @@ async fn get_columns(pool: &Pool<MySql>, table_name: &str) -> sqlx::Result<Vec<C
 }
 
 //
-async fn get_table_names(pool: &Pool<MySql>) -> sqlx::Result<Vec<String>> {
+async fn get_table_names(pool: &Pool<Sqlite>) -> sqlx::Result<Vec<String>> {
     let sql = "select tbl_name from sqlite_master  WHERE type = ? ";
 
     let mut rows = query(sql).bind("table").fetch(pool);
@@ -263,7 +261,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let file_path = matches.value_of("file_path").unwrap();
 
     // let db_url = "mysql://root:cf123456@192.168.1.26:3306";
-    let pool = mysql_util::init_pool(db_url, tz, 4, 1).await?;
+    let pool = sqlite_util::init_pool(db_url,  4, 1).await?;
 
     // let db_name = "cf_2.6";
     let tables = get_table_names(&pool).await?;
@@ -272,8 +270,8 @@ async fn main() -> Result<(), sqlx::Error> {
     let mut entity_list = Vec::new();
 
     for table in tables.iter() {
-        let table_name = table.0.clone();
-        let table_comment = table.1.clone();
+        let table_name = table.clone();
+        let table_comment = "".to_string();
 
         let column_list = get_columns(&pool, table_name.as_str()).await?;
 

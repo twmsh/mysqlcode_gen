@@ -1,12 +1,12 @@
 [package]
-name = "mysql_model"
+name = "sqlite_model"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-mysql_codegen = { path = "../mysql_codegen" }
+sqlite_codegen = { path = "../sqlite_codegen" }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -14,9 +14,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 tokio = { version = "1.15", features = ["full"] }
 tokio-stream = "0.1.8"
 
-mysql = "22"
-
-sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "mysql", "chrono"] }
+sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "sqlite", "chrono"] }
 chrono = { version = "0.4", features = ["serde"]}
 
 clap = "3.1.8"
