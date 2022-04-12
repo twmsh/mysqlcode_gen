@@ -70,7 +70,7 @@ pub fn parse_timezone(tz: &str) -> std::result::Result<FixedOffset, String> {
 }
 
 //---------------------------------------------------
-pub async fn init_pool(
+pub async fn init_mysql_pool(
     db_url: &str,
     tz: &str,
     max_conn: u32,

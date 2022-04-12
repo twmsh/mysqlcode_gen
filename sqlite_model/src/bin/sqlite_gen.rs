@@ -272,7 +272,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let file_path = matches.value_of("file_path").unwrap();
 
     // let db_url = "sqlite:todos.db";
-    let pool = sqlite_util::init_pool(db_url,  4, 1).await?;
+    let pool = sqlite_util::init_sqlite_pool(db_url,  4, 1).await?;
 
     // let db_name = "cf_2.6";
     let tables = get_table_names(&pool).await?;

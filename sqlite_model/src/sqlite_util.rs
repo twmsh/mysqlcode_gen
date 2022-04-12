@@ -70,7 +70,7 @@ pub fn parse_timezone(tz: &str) -> std::result::Result<FixedOffset, String> {
 }
 
 //---------------------------------------------------
-pub async fn init_pool(
+pub async fn init_sqlite_pool(
     db_url: &str,
     max_conn: u32,
     min_conn: u32,

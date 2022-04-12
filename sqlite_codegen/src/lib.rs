@@ -454,7 +454,7 @@ fn generate_insert_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 
          pub async fn insert(&self, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<u64, sqlx::Error> {
             let sql = #sql_lit;
-            let mut args = sqlx::Sqlite::SqliteArguments::default();
+            let mut args = sqlx::sqlite::SqliteArguments::default();
 
             #(#sqlite_arguments_piece);*
 
@@ -550,7 +550,7 @@ fn generate_update_function(st: &syn::DeriveInput) -> syn::Result<TokenStream2> 
 
          pub async fn update(&self, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<u64, sqlx::Error> {
             let sql = #sql_lit;
-            let mut args = sqlx::Sqlite::SqliteArguments::default();
+            let mut args = sqlx::sqlite::SqliteArguments::default();
 
             #(#sqlite_arguments_piece);*
 

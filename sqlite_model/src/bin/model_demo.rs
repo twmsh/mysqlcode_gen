@@ -86,7 +86,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
 
     let db_url = r#"sqlite:C:\Users\tom\develop\RustProjects\mysql_codegen\doc\a.db"#;
-    let pool = sqlite_util::init_pool(db_url,4,2).await?;
+    let pool = sqlite_util::init_sqlite_pool(db_url,4,2).await?;
 
     let obj = BeUser::get_by_id(&pool,1).await?;
     println!("{:?}",obj);

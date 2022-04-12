@@ -10,7 +10,7 @@ use std::time::{ Instant};
 async fn main() -> Result<(), sqlx::Error> {
     let tz = "+08:00";
     let db_url = "mysql://cf_user:cf123456@192.168.1.26:3306/cf_rs";
-    let pool = mysql_util::init_pool(db_url, tz, 10, 4).await?;
+    let pool = mysql_util::init_mysql_pool(db_url, tz, 10, 4).await?;
     let pool = Arc::new(pool);
 
     let offset = match mysql_util::parse_timezone(tz) {
@@ -68,7 +68,7 @@ async fn main() -> Result<(), sqlx::Error> {
 async fn main2() -> Result<(), sqlx::Error> {
     let tz = "+08:00";
     let db_url = "mysql://cf_user:cf123456@192.168.1.26:3306/cf_rs";
-    let pool = mysql_util::init_pool(db_url, tz, 20, 4).await?;
+    let pool = mysql_util::init_mysql_pool(db_url, tz, 20, 4).await?;
     let pool = Arc::new(pool);
 
     let offset = match mysql_util::parse_timezone(tz) {

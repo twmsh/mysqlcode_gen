@@ -34,7 +34,7 @@ async fn main() -> Result<(), sqlx::Error> {
     println!("aaa");
     let tz = "+08:00";
     let db_url = "mysql://cf_user:cf123456@192.168.1.26:3306/cf_rs";
-    let pool = mysql_util::init_pool(db_url, tz, 20, 4).await?;
+    let pool = mysql_util::init_mysql_pool(db_url, tz, 20, 4).await?;
 
     let offset = match mysql_util::parse_timezone(tz) {
         Ok(v) => v,
