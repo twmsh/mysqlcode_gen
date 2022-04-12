@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports,unused_variables,unused_must_use)]
+#![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 
 use std::env;
 // use chrono::FixedOffset;
@@ -6,26 +6,27 @@ use sqlite_model::model;
 use sqlite_model::sqlite_util::{self, MySqxErr};
 // use sqlx::mysql::MySqlPoolOptions;
 // use sqlx::{Executor, MySql, Pool};
-use std::sync::Arc;
-use std::time::{ Instant};
 use chrono::Local;
 use sqlite_model::cf_model::BeUser;
-
+use std::sync::Arc;
+use std::time::Instant;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let mut db_file = r#"C:\Users\tom\develop\RustProjects\mysql_codegen\doc\a.db"#.to_string();
     let mut count = 10;
 
-    let mut args =env::args();
-    if args.len() ==3 {
-        count  = args.nth(1).unwrap().parse().unwrap();
-        db_file = args.nth(2).unwrap().clone();
+    let mut args = env::args();
+    if args.len() == 3 {
+        println!("{:?}", args);
+        count = args.nth(1).unwrap().parse().unwrap();
+        db_file = args.nth(0).unwrap().clone();
+        println!("{}, {}", count, db_file);
     }
 
     let tz = "+08:00";
-    let db_url =  format!(r#"sqlite:{}"#,db_file);
-    let pool = sqlite_util::init_sqlite_pool(db_url.as_str(),  10, 4).await?;
+    let db_url = format!(r#"sqlite:{}"#, db_file);
+    let pool = sqlite_util::init_sqlite_pool(db_url.as_str(), 10, 4).await?;
     let pool = Arc::new(pool);
 
     let offset = match sqlite_util::parse_timezone(tz) {
@@ -54,35 +55,11 @@ async fn main() -> Result<(), sqlx::Error> {
             );
 
             if let Err(e) = v {
-                panic!("a[{}], err: {:?}",num,e);
+                panic!("a[{}], err: {:?}", num, e);
             }
-
         });
         handles.push(handle);
     }
-
-    for i in 0..count {
-        let pool_cl = pool.clone();
-        let offset_cl = offset;
-        let num = i;
-        let handle = tokio::spawn(async move {
-            let begin_t = Instant::now();
-            let v = model::fetch_list_unstruct(&pool_cl, 20, &offset_cl).await;
-            if let Err(e) = v {
-                panic!("b[{}], err: {:?}",num,e);
-            }
-            println!(
-                "b[{}], use:{}, result: {:?}",
-                num,
-                begin_t.elapsed().as_millis(),
-                v.unwrap().len()
-            );
-
-
-        });
-        handles.push(handle);
-    }
-
 
     for i in 0..count {
         let pool_cl = pool.clone();
@@ -123,9 +100,28 @@ async fn main() -> Result<(), sqlx::Error> {
                 v
             );
             if let Err(e) = v {
-                panic!("c[{}], err: {:?}",num,e);
+                panic!("c[{}], err: {:?}", num, e);
             }
+        });
+        handles.push(handle);
+    }
 
+    for i in 0..count {
+        let pool_cl = pool.clone();
+        let offset_cl = offset;
+        let num = i;
+        let handle = tokio::spawn(async move {
+            let begin_t = Instant::now();
+            let v = model::fetch_list_unstruct(&pool_cl, 20, &offset_cl).await;
+            if let Err(e) = v {
+                panic!("b[{}], err: {:?}", num, e);
+            }
+            println!(
+                "b[{}], use:{}, result: {:?}",
+                num,
+                begin_t.elapsed().as_millis(),
+                v.unwrap().len()
+            );
         });
         handles.push(handle);
     }
