@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports)]
+
 use chrono::{DateTime, Local};
 // use serde::{Serialize,Deserialize};
 // use sqlite_model::sqlite_util::MySqxErr;

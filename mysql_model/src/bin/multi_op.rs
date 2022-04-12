@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports,unused_variables,unused_must_use)]
+
 // use chrono::FixedOffset;
 use mysql_model::model;
 use mysql_model::mysql_util::{self, MySqxErr};
