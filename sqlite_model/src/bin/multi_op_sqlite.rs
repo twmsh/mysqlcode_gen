@@ -11,7 +11,7 @@ use sqlite_model::cf_model::BeUser;
 use std::sync::Arc;
 use std::time::Instant;
 
-use log::debug;
+use log::{debug, LevelFilter};
 use tokio::sync::Barrier;
 use std::io::Write;
 
@@ -25,7 +25,7 @@ async fn main() -> Result<(), sqlx::Error> {
             let ts = buf.timestamp_millis();
 
             writeln!(buf,"[{}] {}", ts, record.args())
-        })
+        }).filter_level(LevelFilter::Debug)
         .init();
 
     let mut args = env::args();
@@ -153,7 +153,7 @@ async fn main() -> Result<(), sqlx::Error> {
     for h in handles {
         let _ = h.await;
     }
-    debug!("app end. use:{}", app_begin.elapsed().as_millis());
+    println!("app end. use:{}", app_begin.elapsed().as_millis());
     Ok(())
 }
 
