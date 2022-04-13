@@ -23,7 +23,7 @@ async fn main() -> Result<(), sqlx::Error> {
     env_logger::Builder::new()
         .format(|buf, record| {
             let ts = buf.timestamp_millis();
-            writeln!(buf, "[{} {}] {}", ts, record.level(), record.args())
+            writeln!(buf, "[{}] [{}] {}", ts, record.level(), record.args())
         })
         .filter(Some("multi_op_sqlite"), LevelFilter::Debug)
         .init();
