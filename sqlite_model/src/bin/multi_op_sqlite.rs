@@ -23,7 +23,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .format(|buf, record| {
             let ts = buf.timestamp_millis();
 
-            writeln!("[{}] {}", ts, record.args())
+            writeln!(f,"[{}] {}", ts, record.args())
         })
         .init();
 
