@@ -19,8 +19,7 @@ use tokio::sync::Barrier;
 async fn main() -> Result<(), sqlx::Error> {
     let mut db_file = r#"C:\Users\tom\develop\RustProjects\mysql_codegen\doc\a.db"#.to_string();
     let mut count = 10;
-    let mut app_name ="multi_op_sqlite".to_string();
-
+    let mut app_name = "multi_op_sqlite".to_string();
 
     let mut args = env::args();
     if args.len() == 3 {
@@ -28,9 +27,8 @@ async fn main() -> Result<(), sqlx::Error> {
         app_name = args.nth(0).unwrap().parse().unwrap();
         count = args.nth(0).unwrap().parse().unwrap();
         db_file = args.nth(0).unwrap().clone();
-        println!("{}, {}", count, db_file);
+        println!("{}, {}, {}", app_name, count, db_file);
     }
-
 
     env_logger::Builder::new()
         .format(|buf, record| {
@@ -39,7 +37,6 @@ async fn main() -> Result<(), sqlx::Error> {
         })
         .filter(Some(&app_name), LevelFilter::Debug)
         .init();
-
 
     let barrier_count = count * 3;
     let barrier = Arc::new(Barrier::new(barrier_count));
