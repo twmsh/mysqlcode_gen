@@ -11,12 +11,21 @@ use sqlite_model::cf_model::BeUser;
 use std::sync::Arc;
 use std::time::Instant;
 
+use log::debug;
 use tokio::sync::Barrier;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let mut db_file = r#"C:\Users\tom\develop\RustProjects\mysql_codegen\doc\a.db"#.to_string();
     let mut count = 10;
+
+    env_logger::Builder::new()
+        .format(|buf, record| {
+            let ts = buf.timestamp_millis();
+
+            writeln!("[{}] {}", ts, record.args())
+        })
+        .init();
 
     let mut args = env::args();
     if args.len() == 3 {
@@ -51,12 +60,11 @@ async fn main() -> Result<(), sqlx::Error> {
         let num = i;
         let barrier_cl = barrier.clone();
         let handle = tokio::spawn(async move {
-
             barrier_cl.wait();
 
             let begin_t = Instant::now();
             let v = model::fetch_count(&pool_cl, 20).await;
-            println!(
+            debug!(
                 "a[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
@@ -105,7 +113,7 @@ async fn main() -> Result<(), sqlx::Error> {
             let begin_t = Instant::now();
             let v = beuser.insert(&pool_cl, &offset_cl).await;
 
-            println!(
+            debug!(
                 "c[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
@@ -124,7 +132,6 @@ async fn main() -> Result<(), sqlx::Error> {
         let num = i;
         let barrier_cl = barrier.clone();
         let handle = tokio::spawn(async move {
-
             barrier_cl.wait();
 
             let begin_t = Instant::now();
@@ -132,7 +139,7 @@ async fn main() -> Result<(), sqlx::Error> {
             if let Err(e) = v {
                 panic!("b[{}], err: {:?}", num, e);
             }
-            println!(
+            debug!(
                 "b[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
@@ -142,12 +149,10 @@ async fn main() -> Result<(), sqlx::Error> {
         handles.push(handle);
     }
 
-
-
     for h in handles {
         let _ = h.await;
     }
-    println!("app end. use:{}", app_begin.elapsed().as_millis());
+    debug!("app end. use:{}", app_begin.elapsed().as_millis());
     Ok(())
 }
 
