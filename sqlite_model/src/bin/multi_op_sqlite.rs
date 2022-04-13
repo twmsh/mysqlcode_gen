@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_must_use)]
 
 use std::env;
+use std::ffi::OsStr;
 // use chrono::FixedOffset;
 use sqlite_model::model;
 use sqlite_model::sqlite_util::{self, MySqxErr};
@@ -13,6 +14,7 @@ use std::time::Instant;
 
 use log::{debug, info, LevelFilter};
 use std::io::Write;
+use std::path::Path;
 use tokio::sync::Barrier;
 
 #[tokio::main]
@@ -27,6 +29,14 @@ async fn main() -> Result<(), sqlx::Error> {
         app_name = args.nth(0).unwrap().parse().unwrap();
         count = args.nth(0).unwrap().parse().unwrap();
         db_file = args.nth(0).unwrap().clone();
+
+        let path = Path::new(&app_name);
+        if let Some(v) = path.file_stem() {
+            if let Some(vv) = v.to_str() {
+                app_name = vv.to_string();
+            }
+        }
+
         println!("{}, {}, {}", app_name, count, db_file);
     }
 
