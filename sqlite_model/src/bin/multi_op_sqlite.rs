@@ -25,7 +25,7 @@ async fn main() -> Result<(), sqlx::Error> {
             let ts = buf.timestamp_millis();
 
 
-            writeln!(buf,"[{} {}] [{:?}] {}", ts, record.level(), record.metadata(),record.args())
+            writeln!(buf,"[{} {}] [{:?}] {}", ts, record.level(), record.module_path(),record.args())
         }).filter_level(LevelFilter::Info)
         .init();
 
