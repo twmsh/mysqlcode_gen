@@ -13,6 +13,7 @@ use std::time::Instant;
 
 use log::debug;
 use tokio::sync::Barrier;
+use std::io::Write;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -23,7 +24,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .format(|buf, record| {
             let ts = buf.timestamp_millis();
 
-            writeln!(f,"[{}] {}", ts, record.args())
+            writeln!(buf,"[{}] {}", ts, record.args())
         })
         .init();
 
