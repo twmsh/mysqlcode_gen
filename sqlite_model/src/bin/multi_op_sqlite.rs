@@ -12,8 +12,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use log::{debug, info, LevelFilter};
-use tokio::sync::Barrier;
 use std::io::Write;
+use tokio::sync::Barrier;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -23,10 +23,16 @@ async fn main() -> Result<(), sqlx::Error> {
     env_logger::Builder::new()
         .format(|buf, record| {
             let ts = buf.timestamp_millis();
-
-
-            writeln!(buf,"[{} {}] [{:?}] {}", ts, record.level(), record.module_path(),record.args())
-        }).filter_level(LevelFilter::Info)
+            writeln!(
+                buf,
+                "[{} {}] [{:?}] {}",
+                ts,
+                record.level(),
+                record.module_path(),
+                record.args()
+            )
+        })
+        .filter(Some("multi_op_sqlite"),LevelFilter::Info)
         .init();
 
     let mut args = env::args();
