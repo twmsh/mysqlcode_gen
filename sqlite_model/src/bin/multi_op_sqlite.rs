@@ -23,16 +23,9 @@ async fn main() -> Result<(), sqlx::Error> {
     env_logger::Builder::new()
         .format(|buf, record| {
             let ts = buf.timestamp_millis();
-            writeln!(
-                buf,
-                "[{} {}] [{:?}] {}",
-                ts,
-                record.level(),
-                record.module_path(),
-                record.args()
-            )
+            writeln!(buf, "[{} {}] {}", ts, record.level(), record.args())
         })
-        .filter(Some("multi_op_sqlite"),LevelFilter::Info)
+        .filter(Some("multi_op_sqlite"), LevelFilter::Debug)
         .init();
 
     let mut args = env::args();
@@ -72,7 +65,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
             let begin_t = Instant::now();
             let v = model::fetch_count(&pool_cl, 20).await;
-            info!(
+            debug!(
                 "a[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
@@ -121,7 +114,7 @@ async fn main() -> Result<(), sqlx::Error> {
             let begin_t = Instant::now();
             let v = beuser.insert(&pool_cl, &offset_cl).await;
 
-            info!(
+            debug!(
                 "c[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
@@ -147,7 +140,7 @@ async fn main() -> Result<(), sqlx::Error> {
             if let Err(e) = v {
                 panic!("b[{}], err: {:?}", num, e);
             }
-            info!(
+            debug!(
                 "b[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
