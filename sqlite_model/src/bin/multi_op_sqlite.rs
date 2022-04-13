@@ -32,7 +32,6 @@ async fn main() -> Result<(), sqlx::Error> {
 
         println!("1. app_name:{}", app_name);
 
-
         let path = Path::new(&app_name);
 
         if let Some(v) = path.file_stem() {
