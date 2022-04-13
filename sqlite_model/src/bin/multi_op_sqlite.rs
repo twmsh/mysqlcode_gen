@@ -21,7 +21,7 @@ use tokio::sync::Barrier;
 async fn main() -> Result<(), sqlx::Error> {
     let mut db_file = r#"C:\Users\tom\develop\RustProjects\mysql_codegen\doc\a.db"#.to_string();
     let mut count = 10;
-    let mut app_name = "multi_op_sqlite".to_string();
+    let app_name = "multi_op_sqlite".to_string();
 
     let mut args = env::args();
     if args.len() == 3 {

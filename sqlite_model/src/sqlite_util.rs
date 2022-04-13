@@ -6,7 +6,7 @@ use chrono::prelude::*;
 use chrono::LocalResult;
 use sqlx::error::DatabaseError;
 use sqlx::sqlite::SqlitePoolOptions;
-use sqlx::{Sqlite, Pool};
+use sqlx::{Sqlite, Pool, Executor};
 
 // 从驱动层(sqlx)读取的时间，被认为是UtC时间，实际不是
 pub fn fix_read_dt(dt: &mut DateTime<Local>, db_offset: &FixedOffset) {
@@ -80,6 +80,13 @@ pub async fn init_sqlite_pool(
         .max_connections(max_conn)
         .min_connections(min_conn)
         .idle_timeout(Duration::from_secs(60 * 10))
+        .after_connect(|conn| {
+            Box::pin(async move {
+                conn.execute("PRAGMA journal_mode=WAL").await?;
+                conn.execute("PRAGMA busy_timeout=60000").await?;
+                Ok(())
+            })
+        })
         .connect(db_url)
         .await?;
     Ok(pool)
