@@ -26,19 +26,18 @@ async fn main() -> Result<(), sqlx::Error> {
     let mut args = env::args();
     if args.len() == 3 {
         println!("0. {:?}", args);
-        app_name = args.nth(0).unwrap().parse().unwrap();
-        count = args.nth(0).unwrap().parse().unwrap();
+        // app_name = args.nth(0).unwrap().parse().unwrap();
+        count = args.nth(1).unwrap().parse().unwrap();
         db_file = args.nth(0).unwrap().clone();
 
         println!("1. app_name:{}", app_name);
 
-        let path = Path::new(&app_name);
-
-        if let Some(v) = path.file_stem() {
-            if let Some(vv) = v.to_str() {
-                app_name = vv.to_string();
-            }
-        }
+        // let path = Path::new(&app_name);
+        // if let Some(v) = path.file_stem() {
+        //     if let Some(vv) = v.to_str() {
+        //         app_name = vv.to_string();
+        //     }
+        // }
 
         println!("2. {}, {}, {}", app_name, count, db_file);
     }
