@@ -11,7 +11,7 @@ use sqlite_model::cf_model::BeUser;
 use std::sync::Arc;
 use std::time::Instant;
 
-use log::{debug, LevelFilter};
+use log::{debug, info, LevelFilter};
 use tokio::sync::Barrier;
 use std::io::Write;
 
@@ -25,7 +25,7 @@ async fn main() -> Result<(), sqlx::Error> {
             let ts = buf.timestamp_millis();
 
             writeln!(buf,"[{}] {}", ts, record.args())
-        }).filter_level(LevelFilter::Debug)
+        }).filter_level(LevelFilter::Info)
         .init();
 
     let mut args = env::args();
@@ -65,7 +65,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
             let begin_t = Instant::now();
             let v = model::fetch_count(&pool_cl, 20).await;
-            debug!(
+            info!(
                 "a[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
@@ -114,7 +114,7 @@ async fn main() -> Result<(), sqlx::Error> {
             let begin_t = Instant::now();
             let v = beuser.insert(&pool_cl, &offset_cl).await;
 
-            debug!(
+            info!(
                 "c[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
@@ -140,7 +140,7 @@ async fn main() -> Result<(), sqlx::Error> {
             if let Err(e) = v {
                 panic!("b[{}], err: {:?}", num, e);
             }
-            debug!(
+            info!(
                 "b[{}], use:{}, result: {:?}",
                 num,
                 begin_t.elapsed().as_millis(),
