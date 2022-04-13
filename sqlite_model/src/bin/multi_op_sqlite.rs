@@ -11,6 +11,8 @@ use sqlite_model::cf_model::BeUser;
 use std::sync::Arc;
 use std::time::Instant;
 
+use tokio::sync::Barrier;
+
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let mut db_file = r#"C:\Users\tom\develop\RustProjects\mysql_codegen\doc\a.db"#.to_string();
@@ -24,9 +26,12 @@ async fn main() -> Result<(), sqlx::Error> {
         println!("{}, {}", count, db_file);
     }
 
+    let barrier_count = count * 3;
+    let barrier = Arc::new(Barrier::new(barrier_count));
+
     let tz = "+08:00";
     let db_url = format!(r#"sqlite:{}"#, db_file);
-    let pool = sqlite_util::init_sqlite_pool(db_url.as_str(), 10, 4).await?;
+    let pool = sqlite_util::init_sqlite_pool(db_url.as_str(), 100, 4).await?;
     let pool = Arc::new(pool);
 
     let offset = match sqlite_util::parse_timezone(tz) {
@@ -44,7 +49,11 @@ async fn main() -> Result<(), sqlx::Error> {
         let pool_cl = pool.clone();
         let offset_cl = offset;
         let num = i;
+        let barrier_cl = barrier.clone();
         let handle = tokio::spawn(async move {
+
+            barrier_cl.wait();
+
             let begin_t = Instant::now();
             let v = model::fetch_count(&pool_cl, 20).await;
             println!(
@@ -65,6 +74,7 @@ async fn main() -> Result<(), sqlx::Error> {
         let pool_cl = pool.clone();
         let offset_cl = offset;
         let num = i;
+        let barrier_cl = barrier.clone();
         let handle = tokio::spawn(async move {
             let now = Local::now();
             let login_name = now.timestamp_nanos().to_string();
@@ -90,6 +100,8 @@ async fn main() -> Result<(), sqlx::Error> {
                 gmt_modified: now,
             };
 
+            barrier_cl.wait();
+
             let begin_t = Instant::now();
             let v = beuser.insert(&pool_cl, &offset_cl).await;
 
@@ -110,7 +122,11 @@ async fn main() -> Result<(), sqlx::Error> {
         let pool_cl = pool.clone();
         let offset_cl = offset;
         let num = i;
+        let barrier_cl = barrier.clone();
         let handle = tokio::spawn(async move {
+
+            barrier_cl.wait();
+
             let begin_t = Instant::now();
             let v = model::fetch_list_unstruct(&pool_cl, 20, &offset_cl).await;
             if let Err(e) = v {
