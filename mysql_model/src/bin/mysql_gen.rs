@@ -114,7 +114,8 @@ fn build_type(column_type: &str, is_null: bool) -> Result<String, sqlx::Error> {
         "int" | "integer" | "tinyint" | "smallint" | "mediumint" | "int unsigned"
         | "integer unsigned" | "tinyint unsigned" | "smallint unsigned" | "mediumint unsigned"
         | "bit" => "i32",
-        "float" | "double" | "decimal" => "f64",
+        "float" | "double"  => "f64",
+        "decimal" => "rust_decimal::Decimal",
         "bool" => "bool",
         "enum" | "set" | "varchar" | "char" | "tinytext" | "mediumtext" | "text" | "longtext" => {
             "String"
@@ -221,7 +222,7 @@ use mysql_codegen::MysqlEntity;
 use serde::{Deserialize, Serialize};
 use sqlx::Arguments;
 
-use crate::mysql_util;"#
+use crate::util::mysql_util;"#
         .to_string()
 }
 
