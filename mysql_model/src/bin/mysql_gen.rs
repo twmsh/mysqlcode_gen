@@ -110,13 +110,22 @@ fn build_attr_name(column_name: &str) -> String {
 
 fn build_type(column_type: &str, is_null: bool) -> Result<String, sqlx::Error> {
     let ty = match column_type {
-        "bigint" | "bigint unsigned" => "i64",
-        "int" | "integer" | "tinyint" | "smallint" | "mediumint" | "int unsigned"
-        | "integer unsigned" | "tinyint unsigned" | "smallint unsigned" | "mediumint unsigned"
-        | "bit" => "i32",
-        "float" | "double"  => "f64",
+        "tinyint"  => "i8",
+        "smallint"  => "i16",
+        "int"| "integer"|"mediumint"   => "i32",
+        "bigint" => "i64",
+
+        "tinyint unsigned"  => "u8",
+        "smallint unsigned"  => "u16",
+        "int unsigned"| "integer unsigned"|"mediumint unsigned"   => "u32",
+        "bigint unsigned" | "bit" => "u64",
+
+        "float" => "f32",
+        "double" => "f64",
         "decimal" => "rust_decimal::Decimal",
-        "bool" => "bool",
+
+        "bool" |"boolean" => "bool",
+
         "enum" | "set" | "varchar" | "char" | "tinytext" | "mediumtext" | "text" | "longtext" => {
             "String"
         }
